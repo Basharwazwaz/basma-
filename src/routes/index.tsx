@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useState, useEffect, useRef } from "react";
 import {
   Sparkles,
   Activity,
@@ -10,6 +11,8 @@ import {
   Shield,
   ArrowLeft,
   CheckCircle2,
+  Download,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -40,6 +43,37 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  // ── PWA install banner ─────────────────────────────────────────────────────
+  const deferredPromptRef = useRef<
+    (Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> }) | null
+  >(null);
+  const [showBanner, setShowBanner] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      deferredPromptRef.current = e as typeof deferredPromptRef.current;
+      // Only show if not already dismissed
+      if (!sessionStorage.getItem("pwa-banner-dismissed")) {
+        setShowBanner(true);
+      }
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!deferredPromptRef.current) return;
+    await deferredPromptRef.current.prompt();
+    const { outcome } = await deferredPromptRef.current.userChoice;
+    if (outcome === "accepted") setShowBanner(false);
+    deferredPromptRef.current = null;
+  };
+
+  const dismissBanner = () => {
+    setShowBanner(false);
+    sessionStorage.setItem("pwa-banner-dismissed", "1");
+  };
   const features = [
     {
       icon: Activity,
@@ -335,6 +369,40 @@ function Index() {
           </div>
         </div>
       </footer>
+      {/* PWA Install Banner */}
+      {showBanner && (
+        <div
+          className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-between gap-3 border-t bg-card/95 px-4 py-3 shadow-glow backdrop-blur-md sm:px-6 animate-in slide-in-from-bottom duration-300"
+          role="banner"
+        >
+          <div className="flex items-center gap-3">
+            <div className="gradient-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-primary-foreground">
+              <Download className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">أضف بصمة+ إلى شاشتك الرئيسية</p>
+              <p className="text-xs text-muted-foreground">تجربة أسرع وأفضل بدون متصفح</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              size="sm"
+              className="gradient-primary shadow-soft text-xs"
+              onClick={handleInstall}
+            >
+              تثبيت
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-muted-foreground"
+              onClick={dismissBanner}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

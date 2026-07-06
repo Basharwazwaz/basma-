@@ -31,6 +31,9 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useCountUp } from "@/hooks/use-count-up";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiGetTasks, apiCreateTask, apiUpdateTask } from "@/lib/api";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "لوحة التحكم | بصمة+" }] }),
@@ -62,13 +65,7 @@ const scores = [
   { t: "الرفاه", v: 79, c: "text-success", i: Heart, to: "/mood" as const },
 ];
 
-const INITIAL_TASKS = [
-  { id: "1", t: "جلسة بومودورو لمادة الخوارزميات", done: true },
-  { id: "2", t: "قراءة فصل من كتاب التعلم العميق", done: true },
-  { id: "3", t: "تمرين رياضي ٢٠ دقيقة", done: false },
-  { id: "4", t: "تسجيل المزاج اليومي", done: false },
-  { id: "5", t: "مراجعة الأهداف الأسبوعية", done: false },
-];
+
 
 const ALL_SUGGESTIONS = [
   [
@@ -149,10 +146,29 @@ function ScoreCard({ s }: { s: (typeof scores)[0] }) {
 
 function Dashboard() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const userName = user?.profile?.first_name ?? "يا صديقي";
   const [greeting, setGreeting] = useState(`أهلاً بك، ${userName}`);
 
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const { data: tasks = [], isLoading: isLoadingTasks } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => apiGetTasks(),
+  });
+
+  const updateTaskMutation = useMutation({
+    mutationFn: ({ id, is_completed, status }: { id: string; is_completed: boolean; status: string }) => 
+      apiUpdateTask(id, { is_completed, status: status as any }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+  });
+
+  const createTaskMutation = useMutation({
+    mutationFn: apiCreateTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      setNewTaskTitle("");
+    },
+  });
+
   const [newTaskTitle, setNewTaskTitle] = useState("");
 
   const [suggIndex, setSuggIndex] = useState(0);
@@ -175,7 +191,11 @@ function Dashboard() {
   }, [userName]);
 
   const toggleTask = (id: string, currentlyDone: boolean) => {
-    setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t)));
+    updateTaskMutation.mutate({ 
+      id, 
+      is_completed: !currentlyDone,
+      status: !currentlyDone ? "DONE" : "PENDING"
+    });
     if (!currentlyDone) {
       toast.success("+١٠ نقاط 🎉", {
         description: "تم إنجاز المهمة بنجاح!",
@@ -186,11 +206,11 @@ function Dashboard() {
   const addTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
-    setTasks((prev) => [
-      ...prev,
-      { id: Date.now().toString(), t: newTaskTitle.trim(), done: false },
-    ]);
-    setNewTaskTitle("");
+    createTaskMutation.mutate({
+      title: newTaskTitle.trim(),
+      status: "PENDING",
+      is_completed: false
+    });
   };
 
   const cycleSuggestions = () => {
@@ -325,7 +345,9 @@ function Dashboard() {
         <Card className="p-5 xl:col-span-2 flex flex-col">
           <h3 className="mb-4 text-lg font-bold">مهام اليوم</h3>
           <div className="space-y-2 flex-1">
-            {tasks.length === 0 ? (
+            {isLoadingTasks ? (
+              <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
+            ) : tasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-10 text-center bg-muted/20 h-full">
                 <Activity className="mb-3 h-10 w-10 text-muted-foreground/30" />
                 <p className="font-semibold text-muted-foreground">لا توجد مهام اليوم</p>
@@ -339,17 +361,17 @@ function Dashboard() {
                   key={t.id}
                   className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 transition-all hover:bg-muted/60 hover:border-border"
                 >
-                  <Checkbox checked={t.done} onCheckedChange={() => toggleTask(t.id, t.done)} />
+                  <Checkbox checked={t.is_completed} onCheckedChange={() => toggleTask(t.id, t.is_completed)} disabled={updateTaskMutation.isPending} />
                   <span
                     className={
-                      t.done
+                      t.is_completed
                         ? "flex-1 text-muted-foreground line-through transition-all"
                         : "flex-1 transition-all"
                     }
                   >
-                    {t.t}
+                    {t.title}
                   </span>
-                  {t.done && (
+                  {t.is_completed && (
                     <Badge
                       variant="secondary"
                       className="text-success bg-success/10 animate-in fade-in zoom-in duration-300"
@@ -367,9 +389,10 @@ function Dashboard() {
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
               className="flex-1 bg-muted/30"
+              disabled={createTaskMutation.isPending}
             />
-            <Button type="submit" size="icon" disabled={!newTaskTitle.trim()}>
-              <Plus className="h-4 w-4" />
+            <Button type="submit" size="icon" disabled={!newTaskTitle.trim() || createTaskMutation.isPending}>
+              {createTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             </Button>
           </form>
         </Card>

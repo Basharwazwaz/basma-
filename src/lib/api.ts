@@ -291,3 +291,115 @@ export async function apiUpdateSettings(payload: SettingsPayload): Promise<Profi
     body: payload,
   });
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Productivity helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface GoalData {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  status: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+  target_date: string | null;
+  progress_percent: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function apiGetGoals(): Promise<GoalData[]> {
+  return apiFetch<GoalData[]>("/productivity/goals");
+}
+
+export async function apiCreateGoal(payload: Partial<GoalData>): Promise<GoalData> {
+  return apiFetch<GoalData>("/productivity/goals", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function apiUpdateGoal(id: string, payload: Partial<GoalData>): Promise<GoalData> {
+  return apiFetch<GoalData>(`/productivity/goals/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function apiDeleteGoal(id: string): Promise<void> {
+  await apiFetch(`/productivity/goals/${id}`, { method: "DELETE" });
+}
+
+export interface TaskData {
+  id: string;
+  user_id: string;
+  goal_id: string | null;
+  title: string;
+  is_completed: boolean;
+  status: "PENDING" | "IN_PROGRESS" | "DONE";
+  due_date: string | null;
+  pomodoro_sessions: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function apiGetTasks(params?: { goal_id?: string; due_date?: string }): Promise<TaskData[]> {
+  const qs = new URLSearchParams();
+  if (params?.goal_id) qs.append("goal_id", params.goal_id);
+  if (params?.due_date) qs.append("due_date", params.due_date);
+  const query = qs.toString();
+  return apiFetch<TaskData[]>(`/productivity/tasks${query ? "?" + query : ""}`);
+}
+
+export async function apiCreateTask(payload: Partial<TaskData>): Promise<TaskData> {
+  return apiFetch<TaskData>("/productivity/tasks", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function apiUpdateTask(id: string, payload: Partial<TaskData>): Promise<TaskData> {
+  return apiFetch<TaskData>(`/productivity/tasks/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function apiDeleteTask(id: string): Promise<void> {
+  await apiFetch(`/productivity/tasks/${id}`, { method: "DELETE" });
+}
+
+export interface PlannerData {
+  id: string;
+  user_id: string;
+  title: string;
+  plan_date: string;
+  start_time: string | null;
+  end_time: string | null;
+  is_completed: boolean;
+  created_at: string;
+}
+
+export async function apiGetPlanner(plan_date?: string): Promise<PlannerData[]> {
+  const query = plan_date ? `?plan_date=${plan_date}` : "";
+  return apiFetch<PlannerData[]>(`/productivity/planner${query}`);
+}
+
+export async function apiCreatePlannerItem(payload: Partial<PlannerData>): Promise<PlannerData> {
+  return apiFetch<PlannerData>("/productivity/planner", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function apiUpdatePlannerItem(id: string, payload: Partial<PlannerData>): Promise<PlannerData> {
+  return apiFetch<PlannerData>(`/productivity/planner/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function apiDeletePlannerItem(id: string): Promise<void> {
+  await apiFetch(`/productivity/planner/${id}`, { method: "DELETE" });
+}

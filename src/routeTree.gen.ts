@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WeeklyReportRouteImport } from './routes/weekly-report'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -24,6 +25,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRegisterRouteImport } from './routes/auth.register'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
 
+const WeeklyReportRoute = WeeklyReportRouteImport.update({
+  id: '/weekly-report',
+  path: '/weekly-report',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
+  '/weekly-report': typeof WeeklyReportRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
 }
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
+  '/weekly-report': typeof WeeklyReportRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
 }
@@ -141,6 +149,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/planner': typeof PlannerRoute
   '/profile': typeof ProfileRoute
+  '/weekly-report': typeof WeeklyReportRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
 }
@@ -159,6 +168,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/planner'
     | '/profile'
+    | '/weekly-report'
     | '/auth/login'
     | '/auth/register'
   fileRoutesByTo: FileRoutesByTo
@@ -175,6 +185,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/planner'
     | '/profile'
+    | '/weekly-report'
     | '/auth/login'
     | '/auth/register'
   id:
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/planner'
     | '/profile'
+    | '/weekly-report'
     | '/auth/login'
     | '/auth/register'
   fileRoutesById: FileRoutesById
@@ -208,12 +220,20 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   PlannerRoute: typeof PlannerRoute
   ProfileRoute: typeof ProfileRoute
+  WeeklyReportRoute: typeof WeeklyReportRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/weekly-report': {
+      id: '/weekly-report'
+      path: '/weekly-report'
+      fullPath: '/weekly-report'
+      preLoaderRoute: typeof WeeklyReportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile': {
       id: '/profile'
       path: '/profile'
@@ -328,6 +348,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   PlannerRoute: PlannerRoute,
   ProfileRoute: ProfileRoute,
+  WeeklyReportRoute: WeeklyReportRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
 }

@@ -78,7 +78,7 @@ function Ach() {
               className={`p-5 text-center transition-all ${b.unlocked ? "hover:shadow-glow" : "opacity-70"}`}
             >
               <div
-                className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${b.unlocked ? "gradient-primary text-primary-foreground shadow-glow" : "bg-muted text-muted-foreground"}`}
+                className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${b.unlocked ? "gradient-primary text-primary-foreground shadow-glow relative overflow-hidden animate-shimmer" : "bg-muted text-muted-foreground"}`}
               >
                 {b.unlocked ? <Icon className="h-8 w-8" /> : <Lock className="h-7 w-7" />}
               </div>

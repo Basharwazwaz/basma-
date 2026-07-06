@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState, useMemo } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Flame, BookOpen, Moon, Smartphone, Dumbbell, Brain, Trophy } from "lucide-react";
+import { Flame, BookOpen, Moon, Smartphone, Dumbbell, Brain, Trophy, Search } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/challenges")({
   head: () => ({ meta: [{ title: "التحديات | بصمة+" }] }),
@@ -22,6 +25,7 @@ const active = [
   },
   { title: "اقرأ ٢٠ دقيقة يوميًا", days: 14, progress: 35, icon: BookOpen, color: "text-info" },
 ];
+
 const list = {
   daily: [
     {
@@ -56,7 +60,7 @@ const list = {
       level: "متوسط",
       pts: 100,
       icon: Smartphone,
-      tag: "صحة رقمية",
+      tag: "صحة",
     },
     {
       t: "أكمل كورس قصير",
@@ -95,10 +99,41 @@ const list = {
   ],
 };
 
-function Section({ items }: { items: typeof list.daily }) {
+// All unique tags across all tabs
+const ALL_TAGS = ["الكل", "صحة", "تعلّم", "رفاه", "إنجاز"];
+
+type TabKey = keyof typeof list;
+
+function Section({
+  items,
+  searchQuery,
+  activeTag,
+}: {
+  items: typeof list.daily;
+  searchQuery: string;
+  activeTag: string;
+}) {
+  const filtered = useMemo(() => {
+    return items.filter((c) => {
+      const tagMatch = activeTag === "الكل" || c.tag === activeTag;
+      const searchMatch = !searchQuery || c.t.includes(searchQuery) || c.d.includes(searchQuery);
+      return tagMatch && searchMatch;
+    });
+  }, [items, searchQuery, activeTag]);
+
+  if (filtered.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center">
+        <Search className="mb-3 h-8 w-8 text-muted-foreground/40" />
+        <p className="font-semibold text-muted-foreground">لا توجد تحديات مطابقة</p>
+        <p className="mt-1 text-sm text-muted-foreground/70">جرّب تغيير الفلتر أو البحث</p>
+      </div>
+    );
+  }
+
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {items.map((c) => {
+      {filtered.map((c) => {
         const Icon = c.icon;
         return (
           <Card key={c.t} className="group flex flex-col p-5 transition-all hover:shadow-glow">
@@ -114,7 +149,9 @@ function Section({ items }: { items: typeof list.daily }) {
               <span className="text-muted-foreground">{c.level}</span>
               <span className="font-semibold text-warning-foreground">+{c.pts} نقطة</span>
             </div>
-            <Button className="mt-4 gradient-primary shadow-soft">انضمّ</Button>
+            <Button className="mt-4 gradient-primary shadow-soft transition-transform hover:-translate-y-1">
+              انضمّ
+            </Button>
           </Card>
         );
       })}
@@ -123,8 +160,12 @@ function Section({ items }: { items: typeof list.daily }) {
 }
 
 function Challenges() {
+  const [activeTag, setActiveTag] = useState("الكل");
+  const [searchQuery, setSearchQuery] = useState("");
+
   return (
     <AppShell title="التحديات" subtitle="ابنِ عاداتك من خلال تحديات قصيرة وملموسة.">
+      {/* Active challenges */}
       {active.length > 0 && (
         <Card className="mb-6 p-5">
           <div className="mb-4 flex items-center gap-2">
@@ -157,21 +198,50 @@ function Challenges() {
           </div>
         </Card>
       )}
+
+      {/* Search + Tag filter bar */}
+      <Card className="mb-4 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="ابحث في التحديات..."
+              className="ps-4 pe-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              id="challenges-search"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {ALL_TAGS.map((tag) => (
+              <Badge
+                key={tag}
+                variant={activeTag === tag ? "default" : "outline"}
+                className={cn(
+                  "cursor-pointer select-none transition-all",
+                  activeTag === tag && "shadow-soft",
+                )}
+                onClick={() => setActiveTag(tag)}
+              >
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      </Card>
+
+      {/* Tabs */}
       <Tabs defaultValue="daily">
         <TabsList>
           <TabsTrigger value="daily">يومي</TabsTrigger>
           <TabsTrigger value="weekly">أسبوعي</TabsTrigger>
           <TabsTrigger value="monthly">شهري</TabsTrigger>
         </TabsList>
-        <TabsContent value="daily" className="mt-6">
-          <Section items={list.daily} />
-        </TabsContent>
-        <TabsContent value="weekly" className="mt-6">
-          <Section items={list.weekly} />
-        </TabsContent>
-        <TabsContent value="monthly" className="mt-6">
-          <Section items={list.monthly} />
-        </TabsContent>
+        {(["daily", "weekly", "monthly"] as TabKey[]).map((tab) => (
+          <TabsContent key={tab} value={tab} className="mt-6">
+            <Section items={list[tab]} searchQuery={searchQuery} activeTag={activeTag} />
+          </TabsContent>
+        ))}
       </Tabs>
     </AppShell>
   );
