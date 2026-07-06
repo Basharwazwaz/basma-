@@ -1,4 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -15,34 +18,147 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { X } from "lucide-react";
+import { X, Loader2 } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
+import { useAuth, PROFILE_QUERY_KEY } from "@/hooks/use-auth";
+import {
+  apiUpdateProfile,
+  apiUpdateSettings,
+  type ProfileUpdatePayload,
+  type SettingsPayload,
+} from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
   head: () => ({ meta: [{ title: "الملف الشخصي | بصمة+" }] }),
   component: Profile,
 });
 
-const interests = ["تقنية", "تصميم", "قراءة", "رياضة", "موسيقى"];
-const goals = [
-  { t: "تعلّم البايثون", p: 45 },
-  { t: "تقليل وقت الشاشة", p: 60 },
-  { t: "تحسين المعدّل", p: 70 },
-];
-
-function Profile() {
+function ProfileSkeleton() {
   return (
     <AppShell title="الملف الشخصي" subtitle="إدارة بياناتك وتفضيلاتك.">
       <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="p-6 lg:col-span-2 space-y-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-20 w-20 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+          </div>
+          <Skeleton className="h-px w-full" />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-md" />
+            ))}
+          </div>
+        </Card>
+        <div className="space-y-6">
+          <Card className="p-5 space-y-3">
+            <Skeleton className="h-5 w-24" />
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-4 w-full" />
+            ))}
+          </Card>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+const ALL_INTERESTS = ["رياضة", "ألعاب", "تقنية", "موسيقى", "تصميم", "أعمال", "قراءة", "سفر"];
+
+function Profile() {
+  const { isDark, toggle: toggleTheme } = useTheme();
+  const { user, isLoading } = useAuth();
+  const queryClient = useQueryClient();
+
+  // ── Derive initial form state from server data ─────────────────
+  const profile = user?.profile;
+  const fullName = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ");
+  const initials = profile?.first_name?.[0] ?? user?.email?.[0]?.toUpperCase() ?? "؟";
+
+  const [firstName, setFirstName] = useState(profile?.first_name ?? "");
+  const [lastName, setLastName] = useState(profile?.last_name ?? "");
+  const [city, setCity] = useState(profile?.city ?? "");
+  const [major, setMajor] = useState(profile?.major ?? "");
+  const [age, setAge] = useState(profile?.age?.toString() ?? "");
+  const [interests, setInterests] = useState<string[]>(profile?.interests ?? []);
+  const [notifications, setNotifications] = useState(profile?.notifications_enabled ?? true);
+
+  // Sync form when data arrives from server
+  if (profile && !firstName && profile.first_name) setFirstName(profile.first_name);
+  if (profile && !lastName && profile.last_name) setLastName(profile.last_name);
+  if (profile && !city && profile.city) setCity(profile.city);
+  if (profile && !major && profile.major) setMajor(profile.major);
+  if (profile && !age && profile.age) setAge(String(profile.age));
+
+  // ── Mutations ──────────────────────────────────────────────────
+  const updateProfileMutation = useMutation({
+    mutationFn: (payload: ProfileUpdatePayload) => apiUpdateProfile(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+      toast.success("تم حفظ التغييرات ✓");
+    },
+    onError: () => {
+      toast.error("فشل حفظ التغييرات. حاول مرة أخرى.");
+    },
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: (payload: SettingsPayload) => apiUpdateSettings(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+
+  const handleSaveProfile = () => {
+    updateProfileMutation.mutate({
+      first_name: firstName || undefined,
+      last_name: lastName || undefined,
+      age: age ? Number(age) : undefined,
+      city: city || undefined,
+      major: major || undefined,
+      interests,
+    });
+  };
+
+  const handleNotificationsToggle = (checked: boolean) => {
+    setNotifications(checked);
+    updateSettingsMutation.mutate({ notifications_enabled: checked });
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    updateSettingsMutation.mutate({ language: lang });
+  };
+
+  const removeInterest = (i: string) => {
+    setInterests((prev) => prev.filter((x) => x !== i));
+  };
+
+  const addInterest = (i: string) => {
+    if (!interests.includes(i)) setInterests((prev) => [...prev, i]);
+  };
+
+  if (isLoading) return <ProfileSkeleton />;
+
+  return (
+    <AppShell title="الملف الشخصي" subtitle="إدارة بياناتك وتفضيلاتك.">
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* ── Left / main card ─────────────────────────────────── */}
         <Card className="p-6 lg:col-span-2">
           <div className="mb-6 flex items-center gap-4">
             <Avatar className="h-20 w-20">
               <AvatarFallback className="gradient-primary text-2xl text-primary-foreground">
-                ب
+                {initials}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h2 className="text-xl font-bold">بشّار العلي</h2>
-              <p className="text-sm text-muted-foreground">طالب هندسة برمجيات · المستوى ٧</p>
+              <h2 className="text-xl font-bold">{fullName || user?.email}</h2>
+              <p className="text-sm text-muted-foreground">
+                {major ? `${major} · ` : ""}
+                {profile?.points ?? 0} نقطة
+              </p>
               <Button variant="outline" size="sm" className="mt-2">
                 تغيير الصورة
               </Button>
@@ -52,103 +168,145 @@ function Profile() {
           <h3 className="mt-6 mb-4 font-bold">المعلومات الشخصيّة</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label>الاسم</Label>
-              <Input defaultValue="بشّار العلي" />
+              <Label htmlFor="p-first-name">الاسم الأول</Label>
+              <Input
+                id="p-first-name"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>البريد</Label>
-              <Input dir="ltr" defaultValue="bashar@example.com" />
+              <Label htmlFor="p-last-name">اسم العائلة</Label>
+              <Input
+                id="p-last-name"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>المدينة</Label>
-              <Input defaultValue="عمّان" />
+              <Label htmlFor="p-email">البريد</Label>
+              <Input id="p-email" dir="ltr" value={user?.email ?? ""} readOnly disabled />
             </div>
             <div className="space-y-1.5">
-              <Label>التعليم</Label>
-              <Input defaultValue="جامعي" />
+              <Label htmlFor="p-city">المدينة</Label>
+              <Input
+                id="p-city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>العمر</Label>
-              <Input type="number" defaultValue={21} />
+              <Label htmlFor="p-major">التخصص</Label>
+              <Input
+                id="p-major"
+                value={major}
+                onChange={(e) => setMajor(e.target.value)}
+              />
             </div>
             <div className="space-y-1.5">
-              <Label>الجنس</Label>
-              <Select defaultValue="m">
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="m">ذكر</SelectItem>
-                  <SelectItem value="f">أنثى</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="p-age">العمر</Label>
+              <Input
+                id="p-age"
+                type="number"
+                value={age}
+                onChange={(e) => setAge(e.target.value)}
+              />
             </div>
           </div>
 
+          {/* Interests */}
           <h3 className="mt-6 mb-3 font-bold">الاهتمامات</h3>
           <div className="flex flex-wrap gap-2">
             {interests.map((i) => (
               <Badge key={i} variant="secondary" className="gap-1 py-1.5 ps-3 pe-2">
                 {i}
-                <button className="rounded-full p-0.5 transition hover:bg-foreground/10">
+                <button
+                  onClick={() => removeInterest(i)}
+                  className="rounded-full p-0.5 transition hover:bg-foreground/10"
+                  aria-label={`إزالة ${i}`}
+                >
                   <X className="h-3 w-3" />
                 </button>
               </Badge>
             ))}
-            <Button variant="outline" size="sm">
-              + إضافة
-            </Button>
+          </div>
+          {/* Add interest picker */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {ALL_INTERESTS.filter((i) => !interests.includes(i)).map((i) => (
+              <button
+                key={i}
+                onClick={() => addInterest(i)}
+                className="rounded-full border px-3 py-1 text-xs hover:border-primary hover:bg-muted transition-all"
+              >
+                + {i}
+              </button>
+            ))}
           </div>
 
           <div className="mt-6 flex gap-3">
-            <Button className="gradient-primary shadow-soft">حفظ التغييرات</Button>
-            <Button variant="ghost">إلغاء</Button>
+            <Button
+              className="gradient-primary shadow-soft"
+              onClick={handleSaveProfile}
+              disabled={updateProfileMutation.isPending}
+            >
+              {updateProfileMutation.isPending ? (
+                <>
+                  <Loader2 className="me-1 h-4 w-4 animate-spin" />
+                  جارٍ الحفظ…
+                </>
+              ) : (
+                "حفظ التغييرات"
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setFirstName(profile?.first_name ?? "");
+                setLastName(profile?.last_name ?? "");
+                setCity(profile?.city ?? "");
+                setMajor(profile?.major ?? "");
+                setAge(profile?.age?.toString() ?? "");
+                setInterests(profile?.interests ?? []);
+              }}
+            >
+              إلغاء
+            </Button>
           </div>
         </Card>
 
+        {/* ── Right sidebar ─────────────────────────────────────── */}
         <div className="space-y-6">
-          <Card className="p-5">
-            <h3 className="mb-3 font-bold">أهدافك النشطة</h3>
-            <div className="space-y-3">
-              {goals.map((g) => (
-                <div key={g.t}>
-                  <div className="mb-1 flex justify-between text-sm">
-                    <span>{g.t}</span>
-                    <span className="text-muted-foreground">{g.p}٪</span>
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-                    <div
-                      className="gradient-primary h-full rounded-full"
-                      style={{ width: `${g.p}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
+          {/* Settings card */}
           <Card className="p-5">
             <h3 className="mb-3 font-bold">الإعدادات</h3>
             <div className="space-y-4 text-sm">
               <div className="flex items-center justify-between">
                 <span>الوضع الداكن</span>
-                <Switch />
+                <Switch
+                  id="dark-mode-switch"
+                  checked={isDark}
+                  onCheckedChange={(checked) => {
+                    toggleTheme();
+                    updateSettingsMutation.mutate({
+                      theme: checked ? "dark" : "light",
+                    });
+                  }}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span>إشعارات يوميّة</span>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <span>تذكير المخطط</span>
-                <Switch defaultChecked />
-              </div>
-              <div className="flex items-center justify-between">
-                <span>ملخّص أسبوعي</span>
-                <Switch defaultChecked />
+                <Switch
+                  id="notifications-switch"
+                  checked={notifications}
+                  onCheckedChange={handleNotificationsToggle}
+                />
               </div>
               <div className="space-y-1.5">
                 <Label>اللغة</Label>
-                <Select defaultValue="ar">
+                <Select
+                  defaultValue={profile?.language ?? "ar"}
+                  onValueChange={handleLanguageChange}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -161,6 +319,7 @@ function Profile() {
             </div>
           </Card>
 
+          {/* Danger zone */}
           <Card className="border-destructive/30 bg-destructive/5 p-5">
             <h3 className="mb-2 font-bold text-destructive">منطقة حسّاسة</h3>
             <p className="mb-3 text-xs text-muted-foreground">
