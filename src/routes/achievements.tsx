@@ -16,6 +16,10 @@ import {
   Lock,
 } from "lucide-react";
 
+import { useQuery } from "@tanstack/react-query";
+import { apiGetAchievements, apiGetProfile } from "@/lib/api";
+import { Loader2 } from "lucide-react";
+
 export const Route = createFileRoute("/achievements")({
   head: () => ({ meta: [{ title: "الإنجازات | بصمة+" }] }),
   component: Ach,
@@ -39,29 +43,60 @@ const activity = [
 ];
 
 function Ach() {
+  const { data: userProfile, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["profile"],
+    queryFn: () => apiGetProfile(),
+  });
+
+  const { data: earnedAchievements = [], isLoading: isAchLoading } = useQuery({
+    queryKey: ["achievements"],
+    queryFn: () => apiGetAchievements(),
+  });
+
+  const points = userProfile?.profile?.points || 0;
+  const level = Math.floor(points / 300) + 1;
+  const nextLevelPoints = level * 300;
+  const progressPercent = ((points % 300) / 300) * 100;
+
+  const earnedTitles = new Set(earnedAchievements.map((a) => a.title));
+
+  const displayBadges = badges
+    .map((b) => ({
+      ...b,
+      unlocked: earnedTitles.has(b.t) || b.unlocked, // keep initial mocked as true just for visual if needed, but realistically we should just check earnedTitles. Let's make it real.
+    }))
+    .map((b) => ({ ...b, unlocked: earnedTitles.has(b.t) })); // Real version
+
   return (
     <AppShell title="الإنجازات" subtitle="احتفل بإنجازاتك واستمر في التقدّم.">
       <Card className="gradient-primary mb-6 p-6 text-primary-foreground shadow-glow">
         <div className="grid items-center gap-6 sm:grid-cols-3">
           <div>
             <div className="text-sm opacity-90">المستوى الحالي</div>
-            <div className="mt-1 text-5xl font-extrabold">٧</div>
-            <div className="mt-1 text-xs opacity-80">٢٤٠ نقطة للمستوى التالي</div>
+            <div className="mt-1 text-5xl font-extrabold">{level}</div>
+            <div className="mt-1 text-xs opacity-80">
+              {nextLevelPoints - points} نقطة للمستوى التالي
+            </div>
           </div>
           <div className="sm:col-span-2">
             <div className="mb-2 flex justify-between text-sm">
-              <span>٢٧٦٠ نقطة</span>
-              <span className="opacity-80">٣٠٠٠ للمستوى ٨</span>
+              <span>{points} نقطة</span>
+              <span className="opacity-80">
+                {nextLevelPoints} للمستوى {level + 1}
+              </span>
             </div>
             <div className="h-3 overflow-hidden rounded-full bg-primary-foreground/20">
-              <div className="gradient-warm h-full rounded-full" style={{ width: "92%" }} />
+              <div
+                className="gradient-warm h-full rounded-full transition-all"
+                style={{ width: `${progressPercent}%` }}
+              />
             </div>
             <div className="mt-4 flex gap-3 text-sm">
               <span className="flex items-center gap-1">
-                <Flame className="h-4 w-4" /> سلسلة ١٢ يوم
+                <Flame className="h-4 w-4" /> سلسلة ٧ أيام
               </span>
               <span className="flex items-center gap-1">
-                <Trophy className="h-4 w-4" /> ٤ شارات
+                <Trophy className="h-4 w-4" /> {earnedAchievements.length} شارات
               </span>
             </div>
           </div>
@@ -70,34 +105,40 @@ function Ach() {
 
       <h3 className="mb-3 text-lg font-bold">الشارات</h3>
       <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {badges.map((b) => {
-          const Icon = b.icon;
-          return (
-            <Card
-              key={b.t}
-              className={`p-5 text-center transition-all ${b.unlocked ? "hover:shadow-glow" : "opacity-70"}`}
-            >
-              <div
-                className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${b.unlocked ? "gradient-primary text-primary-foreground shadow-glow relative overflow-hidden animate-shimmer" : "bg-muted text-muted-foreground"}`}
+        {isAchLoading ? (
+          <div className="col-span-full py-10 flex justify-center">
+            <Loader2 className="animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          displayBadges.map((b) => {
+            const Icon = b.icon;
+            return (
+              <Card
+                key={b.t}
+                className={`p-5 text-center transition-all ${b.unlocked ? "hover:shadow-glow" : "opacity-70"}`}
               >
-                {b.unlocked ? <Icon className="h-8 w-8" /> : <Lock className="h-7 w-7" />}
-              </div>
-              <h4 className="mt-3 font-bold">{b.t}</h4>
-              <p className="mt-1 text-xs text-muted-foreground">{b.d}</p>
-              {!b.unlocked && typeof b.p === "number" && (
-                <div className="mt-3">
-                  <Progress value={b.p} className="h-1.5" />
-                  <div className="mt-1 text-xs text-muted-foreground">{b.p}٪</div>
+                <div
+                  className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${b.unlocked ? "gradient-primary text-primary-foreground shadow-glow relative overflow-hidden animate-shimmer" : "bg-muted text-muted-foreground"}`}
+                >
+                  {b.unlocked ? <Icon className="h-8 w-8" /> : <Lock className="h-7 w-7" />}
                 </div>
-              )}
-              {b.unlocked && (
-                <Badge className="mt-3" variant="secondary">
-                  مفتوحة
-                </Badge>
-              )}
-            </Card>
-          );
-        })}
+                <h4 className="mt-3 font-bold">{b.t}</h4>
+                <p className="mt-1 text-xs text-muted-foreground">{b.d}</p>
+                {!b.unlocked && typeof b.p === "number" && (
+                  <div className="mt-3">
+                    <Progress value={b.p} className="h-1.5" />
+                    <div className="mt-1 text-xs text-muted-foreground">{b.p}٪</div>
+                  </div>
+                )}
+                {b.unlocked && (
+                  <Badge className="mt-3" variant="secondary">
+                    مفتوحة
+                  </Badge>
+                )}
+              </Card>
+            );
+          })
+        )}
       </div>
 
       <Card className="p-5">

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
-import { Sparkles, Flame, CheckCircle2 } from "lucide-react";
+import { useState, useRef, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,6 +18,8 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
+import { apiGetMoods, apiSubmitMood } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/mood")({
   head: () => ({ meta: [{ title: "تتبّع المزاج | بصمة+" }] }),
@@ -24,42 +27,79 @@ export const Route = createFileRoute("/mood")({
 });
 
 const emojis = [
-  { e: "😫", l: "سيّئ جدًا", v: 1 },
-  { e: "😔", l: "متعب", v: 3 },
-  { e: "😐", l: "عادي", v: 5 },
-  { e: "🙂", l: "جيّد", v: 7 },
-  { e: "😄", l: "ممتاز", v: 10 },
-];
-const history = [
-  { d: "س", v: 6 },
-  { d: "ح", v: 7 },
-  { d: "ن", v: 5 },
-  { d: "ث", v: 8 },
-  { d: "ر", v: 7 },
-  { d: "خ", v: 8 },
-  { d: "ج", v: 9 },
-];
-const corr = [
-  { d: "س", mood: 6, study: 3 },
-  { d: "ح", mood: 7, study: 4 },
-  { d: "ن", mood: 5, study: 2 },
-  { d: "ث", mood: 8, study: 5 },
-  { d: "ر", mood: 7, study: 4 },
-  { d: "خ", mood: 8, study: 6 },
-  { d: "ج", mood: 9, study: 5 },
+  { e: "😫", state: "TERRIBLE", l: "سيّئ جدًا", v: 1 },
+  { e: "😔", state: "BAD", l: "متعب", v: 3 },
+  { e: "😐", state: "NEUTRAL", l: "عادي", v: 5 },
+  { e: "🙂", state: "GOOD", l: "جيّد", v: 7 },
+  { e: "😄", state: "EXCELLENT", l: "ممتاز", v: 10 },
 ];
 
 function Mood() {
-  const [sel, setSel] = useState<number | null>(7);
-  const [isSaved, setIsSaved] = useState(false);
+  const queryClient = useQueryClient();
+  const today = new Date().toISOString().split("T")[0];
+
+  const { data: moodLogs = [], isLoading } = useQuery({
+    queryKey: ["moods"],
+    queryFn: () => apiGetMoods(),
+  });
+
+  const todayLog = moodLogs.find((m) => m.record_date === today);
+
+  const [sel, setSel] = useState<number | null>(todayLog?.mood_score || null);
+  const [note, setNote] = useState(todayLog?.note || "");
   const [showConfetti, setShowConfetti] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
+
+  const submitMoodMutation = useMutation({
+    mutationFn: apiSubmitMood,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["moods"] });
+      setShowConfetti(true);
+      setTimeout(() => setShowConfetti(false), 1000);
+      toast.success("تم حفظ مزاجك اليوم!");
+      localStorage.setItem("basma-mood-date", today);
+    },
+    onError: () => {
+      toast.error("فشل حفظ المزاج");
+    },
+  });
 
   const handleSave = () => {
-    setIsSaved(true);
-    setShowConfetti(true);
-    setTimeout(() => setShowConfetti(false), 1000);
+    if (!sel) return;
+    const emojiConfig = emojis.find((e) => e.v === sel) || emojis[2];
+    submitMoodMutation.mutate({
+      record_date: today,
+      mood_score: sel,
+      stress_score: 5, // Default for now
+      mood_state: emojiConfig.state,
+      note: note.trim() || undefined,
+    });
   };
+
+  const isSaved = todayLog?.mood_score === sel && todayLog?.note === note;
+
+  const chartData = useMemo(() => {
+    // Reverse so oldest is first (for chart LTR or RTL logic)
+    const sorted = [...moodLogs].sort(
+      (a, b) => new Date(a.record_date).getTime() - new Date(b.record_date).getTime(),
+    );
+    return sorted
+      .map((log) => ({
+        d: new Date(log.record_date).toLocaleDateString("ar-EG", { weekday: "short" }),
+        v: log.mood_score,
+      }))
+      .slice(-7); // Last 7 days
+  }, [moodLogs]);
+
+  // Dummy correlation data for now, until we fully link study habits
+  const corr = [
+    { d: "س", mood: 6, study: 3 },
+    { d: "ح", mood: 7, study: 4 },
+    { d: "ن", mood: 5, study: 2 },
+    { d: "ث", mood: 8, study: 5 },
+    { d: "ر", mood: 7, study: 4 },
+    { d: "خ", mood: 8, study: 6 },
+    { d: "ج", mood: 9, study: 5 },
+  ];
 
   return (
     <AppShell title="تتبّع المزاج" subtitle="افهم مشاعرك وعلاقتها بعاداتك.">
@@ -69,10 +109,7 @@ function Mood() {
           {emojis.map((m) => (
             <button
               key={m.v}
-              onClick={() => {
-                setSel(m.v);
-                setIsSaved(false);
-              }}
+              onClick={() => setSel(m.v)}
               className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-3 transition-transform duration-200 hover:scale-110 ${sel === m.v ? "border-primary bg-primary/10 shadow-glow scale-110" : "border-transparent bg-muted/40 hover:bg-muted"}`}
             >
               <span className="text-4xl">{m.e}</span>
@@ -81,16 +118,22 @@ function Mood() {
           ))}
         </div>
         <div className="mt-6">
-          <Textarea placeholder="اكتب ما يدور في بالك (اختياري)..." rows={3} />
+          <Textarea
+            placeholder="اكتب ما يدور في بالك (اختياري)..."
+            rows={3}
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </div>
         <div className="mt-4 relative">
           <Button
-            ref={btnRef}
             onClick={handleSave}
-            disabled={isSaved}
+            disabled={isSaved || !sel || submitMoodMutation.isPending}
             className={`gradient-primary shadow-soft transition-all ${isSaved ? "bg-success hover:bg-success text-success-foreground" : ""}`}
           >
-            {isSaved ? (
+            {submitMoodMutation.isPending ? (
+              <Loader2 className="me-2 h-4 w-4 animate-spin" />
+            ) : isSaved ? (
               <>
                 <CheckCircle2 className="me-2 h-4 w-4" /> تم الحفظ
               </>
@@ -143,7 +186,7 @@ function Mood() {
         </div>
       </Card>
 
-      {sel && sel >= 7 && (
+      {sel && sel >= 7 && isSaved && (
         <Card className="mb-6 bg-success/10 p-4 text-success-foreground">
           <strong className="text-success">رائع!</strong> يومك يبدو إيجابيًا. حاول الحفاظ على هذا
           الإيقاع بنوم منتظم وتعرّض كافٍ للشمس.
@@ -154,32 +197,42 @@ function Mood() {
         <Card className="p-5">
           <h3 className="mb-4 font-bold">مزاجك خلال الأسبوع</h3>
           <div className="h-64">
-            <ResponsiveContainer>
-              <LineChart data={history}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
-                <XAxis dataKey="d" fontSize={12} />
-                <YAxis domain={[0, 10]} fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    background: "var(--card)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 8,
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="v"
-                  stroke="var(--chart-3)"
-                  strokeWidth={3}
-                  dot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="h-full flex items-center justify-center">
+                <Loader2 className="animate-spin text-muted-foreground" />
+              </div>
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                  <XAxis dataKey="d" fontSize={12} />
+                  <YAxis domain={[0, 10]} fontSize={12} />
+                  <Tooltip
+                    contentStyle={{
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
+                      borderRadius: 8,
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="v"
+                    stroke="var(--chart-3)"
+                    strokeWidth={3}
+                    dot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                لا توجد بيانات كافية
+              </div>
+            )}
           </div>
         </Card>
         <Card className="p-5">
-          <h3 className="mb-4 font-bold">المزاج مقابل ساعات الدراسة</h3>
-          <div className="h-64">
+          <h3 className="mb-4 font-bold">المزاج مقابل ساعات الدراسة (قريباً)</h3>
+          <div className="h-64 opacity-50 pointer-events-none">
             <ResponsiveContainer>
               <BarChart data={corr}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
@@ -208,18 +261,19 @@ function Mood() {
             <h3 className="font-bold">رؤية ذكية</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            مزاجك يكون في أفضل حالاته أيام الخميس والجمعة، ويتزامن ذلك مع انخفاض ملحوظ في وقت
-            الشاشة!
+            كلما زاد عدد الأيام التي تسجل فيها مزاجك، كلما تمكنّا من إعطائك تحليلات أدق عن عاداتك!
           </p>
         </Card>
 
         <Card className="p-5 flex items-center justify-between">
           <div>
             <h3 className="font-bold">سلسلة الأيام</h3>
-            <p className="text-sm text-muted-foreground mt-1">سجّلت مزاجك ٥ أيام متتالية 🔥</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              سجّلت مزاجك {moodLogs.length} يومًا في النظام 🔥
+            </p>
           </div>
           <div className="flex items-center justify-center h-14 w-14 rounded-full bg-accent/20 text-accent-foreground font-black text-2xl">
-            ٥
+            {moodLogs.length}
           </div>
         </Card>
       </div>

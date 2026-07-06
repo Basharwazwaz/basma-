@@ -1,4 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  apiGetNotifications,
+  apiMarkNotificationRead,
+  apiMarkAllNotificationsRead,
+} from "@/lib/api";
 
 export type NotificationType = "reminder" | "insight" | "challenge" | "system";
 
@@ -11,84 +16,54 @@ export interface AppNotification {
   createdAt: string;
 }
 
-const STORAGE_KEY = "basma_notifications_read";
-
-const INITIAL_NOTIFICATIONS: AppNotification[] = [
-  {
-    id: "n1",
-    title: "تذكير بجلسة الدراسة",
-    message: "لم تبدأ جلسة بومودورو اليوم. ابدأ الآن وحافظ على سلسلة إنجازاتك! 🔥",
-    type: "reminder",
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 15).toISOString(), // 15 min ago
-  },
-  {
-    id: "n2",
-    title: "تحدٍّ جديد متاح",
-    message: 'تحدّي "اقرأ ١٠ صفحات يومياً" ينتهر خلال ٢٤ ساعة. انضمّ الآن واكسب ٥٠ نقطة.',
-    type: "challenge",
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60).toISOString(), // 1 hour ago
-  },
-  {
-    id: "n3",
-    title: "رؤية أسبوعية 💡",
-    message: "أنت في أفضل ٢٠٪ من المستخدمين هذا الأسبوع. معدّل نشاطك ارتفع ١٥٪ عن الأسبوع الماضي.",
-    type: "insight",
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(), // 3 hours ago
-  },
-  {
-    id: "n4",
-    title: "تحديث النظام",
-    message: "تم إضافة ميزة تتبّع المزاج اليومي. جرّبها الآن من قسم تتبّع المزاج.",
-    type: "system",
-    isRead: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-  },
-  {
-    id: "n5",
-    title: "أحسنت! 🎉",
-    message: "أتممت ٤ جلسات بومودورو أمس. استمر وستصل إلى المستوى ٨ خلال ٣ أيام.",
-    type: "insight",
-    isRead: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 36).toISOString(), // 1.5 days ago
-  },
-];
+const NOTIFICATIONS_QUERY_KEY = ["notifications"];
 
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
-    // Merge persisted read-state with initial notifications (client-side only)
-    if (typeof window === "undefined") return INITIAL_NOTIFICATIONS;
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return INITIAL_NOTIFICATIONS;
-      const readIds: string[] = JSON.parse(stored);
-      return INITIAL_NOTIFICATIONS.map((n) => ({
-        ...n,
-        isRead: readIds.includes(n.id) ? true : n.isRead,
-      }));
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
+  const queryClient = useQueryClient();
+
+  const { data: serverNotifications = [], isLoading } = useQuery({
+    queryKey: NOTIFICATIONS_QUERY_KEY,
+    queryFn: () => apiGetNotifications(),
+    refetchInterval: 60000, // refresh every minute
   });
 
-  // Persist read state whenever it changes
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const readIds = notifications.filter((n) => n.isRead).map((n) => n.id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(readIds));
-  }, [notifications]);
+  // Map backend format to frontend format
+  const notifications: AppNotification[] = serverNotifications.map(
+    (n: import("@/lib/api").NotificationData) => ({
+      id: n.id,
+      title: n.title,
+      message: n.message || "",
+      type: (n.action_url && n.action_url.includes("challenge")
+        ? "challenge"
+        : "system") as NotificationType,
+      isRead: n.is_read,
+      createdAt: n.created_at,
+    }),
+  );
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const markAsRead = useCallback((id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
-  }, []);
+  const markAsReadMutation = useMutation({
+    mutationFn: apiMarkNotificationRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+    },
+  });
 
-  const markAllAsRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-  }, []);
+  const markAllAsReadMutation = useMutation({
+    mutationFn: apiMarkAllNotificationsRead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+    },
+  });
 
-  return { notifications, unreadCount, markAsRead, markAllAsRead };
+  const markAsRead = (id: string) => {
+    markAsReadMutation.mutate(id);
+  };
+
+  const markAllAsRead = () => {
+    markAllAsReadMutation.mutate();
+  };
+
+  return { notifications, unreadCount, markAsRead, markAllAsRead, isLoading };
 }

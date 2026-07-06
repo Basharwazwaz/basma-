@@ -32,8 +32,16 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGetTasks, apiCreateTask, apiUpdateTask } from "@/lib/api";
-import { Loader2 } from "lucide-react";
+import { apiGetTasks, apiCreateTask, apiUpdateTask, apiGetDashboardSummary } from "@/lib/api";
+import { Loader2, type LucideIcon } from "lucide-react";
+import type { DashboardSummaryData } from "@/lib/api";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Activity,
+  Brain,
+  TrendingUp,
+  Heart,
+};
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "لوحة التحكم | بصمة+" }] }),
@@ -64,8 +72,6 @@ const scores = [
   { t: "الإنتاجية", v: 68, c: "text-warning", i: TrendingUp, to: "/planner" as const },
   { t: "الرفاه", v: 79, c: "text-success", i: Heart, to: "/mood" as const },
 ];
-
-
 
 const ALL_SUGGESTIONS = [
   [
@@ -118,9 +124,9 @@ function getGreeting(name: string) {
   return `تصبح على خير، ${name} 🌙`;
 }
 
-function ScoreCard({ s }: { s: (typeof scores)[0] }) {
+function ScoreCard({ s }: { s: DashboardSummaryData["scores"][0] }) {
   const animatedValue = useCountUp(s.v, 1200);
-  const Icon = s.i;
+  const Icon = ICON_MAP[s.i] || Activity;
 
   return (
     <Link to={s.to}>
@@ -150,14 +156,26 @@ function Dashboard() {
   const userName = user?.profile?.first_name ?? "يا صديقي";
   const [greeting, setGreeting] = useState(`أهلاً بك، ${userName}`);
 
+  const { data: dashboard, isLoading: isLoadingDashboard } = useQuery({
+    queryKey: ["dashboard_summary"],
+    queryFn: () => apiGetDashboardSummary(),
+  });
+
   const { data: tasks = [], isLoading: isLoadingTasks } = useQuery({
     queryKey: ["tasks"],
     queryFn: () => apiGetTasks(),
   });
 
   const updateTaskMutation = useMutation({
-    mutationFn: ({ id, is_completed, status }: { id: string; is_completed: boolean; status: string }) => 
-      apiUpdateTask(id, { is_completed, status: status as any }),
+    mutationFn: ({
+      id,
+      is_completed,
+      status,
+    }: {
+      id: string;
+      is_completed: boolean;
+      status: string;
+    }) => apiUpdateTask(id, { is_completed, status: status as "DONE" | "PENDING" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
   });
 
@@ -191,10 +209,10 @@ function Dashboard() {
   }, [userName]);
 
   const toggleTask = (id: string, currentlyDone: boolean) => {
-    updateTaskMutation.mutate({ 
-      id, 
+    updateTaskMutation.mutate({
+      id,
       is_completed: !currentlyDone,
-      status: !currentlyDone ? "DONE" : "PENDING"
+      status: !currentlyDone ? "DONE" : "PENDING",
     });
     if (!currentlyDone) {
       toast.success("+١٠ نقاط 🎉", {
@@ -209,16 +227,8 @@ function Dashboard() {
     createTaskMutation.mutate({
       title: newTaskTitle.trim(),
       status: "PENDING",
-      is_completed: false
+      is_completed: false,
     });
-  };
-
-  const cycleSuggestions = () => {
-    setIsRefreshingSugg(true);
-    setTimeout(() => {
-      setSuggIndex((prev) => (prev + 1) % ALL_SUGGESTIONS.length);
-      setIsRefreshingSugg(false);
-    }, 300);
   };
 
   const logMood = (label: string, emoji: string) => {
@@ -235,7 +245,7 @@ function Dashboard() {
     });
   };
 
-  const currentSuggestions = ALL_SUGGESTIONS[suggIndex];
+  const currentSuggestions = dashboard?.suggestions || [];
 
   return (
     <AppShell
@@ -250,9 +260,13 @@ function Dashboard() {
       }
     >
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {scores.map((s) => (
-          <ScoreCard key={s.t} s={s} />
-        ))}
+        {isLoadingDashboard ? (
+          <div className="col-span-full py-10 flex justify-center">
+            <Loader2 className="animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          dashboard?.scores.map((s) => <ScoreCard key={s.t} s={s} />)
+        )}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
@@ -260,13 +274,15 @@ function Dashboard() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-lg font-bold">وقت الشاشة هذا الأسبوع</h3>
-              <p className="text-xs text-muted-foreground">متوسط ٤.٨ ساعة يوميًا</p>
+              <p className="text-xs text-muted-foreground">
+                متوسط {dashboard?.screen_time_avg || 0} ساعة يوميًا
+              </p>
             </div>
             <Badge variant="secondary">انخفاض ١٢٪</Badge>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={screen}>
+              <BarChart data={dashboard?.screen_time || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -288,7 +304,7 @@ function Dashboard() {
           <p className="text-xs text-muted-foreground">آخر ٧ أيام</p>
           <div className="mt-4 h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={mood}>
+              <LineChart data={dashboard?.mood_chart || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis domain={[0, 10]} stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -346,7 +362,9 @@ function Dashboard() {
           <h3 className="mb-4 text-lg font-bold">مهام اليوم</h3>
           <div className="space-y-2 flex-1">
             {isLoadingTasks ? (
-              <div className="py-10 flex justify-center"><Loader2 className="animate-spin text-muted-foreground" /></div>
+              <div className="py-10 flex justify-center">
+                <Loader2 className="animate-spin text-muted-foreground" />
+              </div>
             ) : tasks.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-10 text-center bg-muted/20 h-full">
                 <Activity className="mb-3 h-10 w-10 text-muted-foreground/30" />
@@ -361,7 +379,11 @@ function Dashboard() {
                   key={t.id}
                   className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent p-3 transition-all hover:bg-muted/60 hover:border-border"
                 >
-                  <Checkbox checked={t.is_completed} onCheckedChange={() => toggleTask(t.id, t.is_completed)} disabled={updateTaskMutation.isPending} />
+                  <Checkbox
+                    checked={t.is_completed}
+                    onCheckedChange={() => toggleTask(t.id, t.is_completed)}
+                    disabled={updateTaskMutation.isPending}
+                  />
                   <span
                     className={
                       t.is_completed
@@ -391,8 +413,16 @@ function Dashboard() {
               className="flex-1 bg-muted/30"
               disabled={createTaskMutation.isPending}
             />
-            <Button type="submit" size="icon" disabled={!newTaskTitle.trim() || createTaskMutation.isPending}>
-              {createTaskMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!newTaskTitle.trim() || createTaskMutation.isPending}
+            >
+              {createTaskMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
             </Button>
           </form>
         </Card>
@@ -403,14 +433,6 @@ function Dashboard() {
               <Sparkles className="h-4 w-4 text-primary" />
               <h3 className="text-lg font-bold">اقتراحات ذكيّة</h3>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={cycleSuggestions}
-              className="h-8 w-8 text-muted-foreground hover:text-primary"
-            >
-              <RefreshCw className={`h-4 w-4 ${isRefreshingSugg ? "animate-spin" : ""}`} />
-            </Button>
           </div>
           <div
             className={`space-y-3 transition-opacity duration-300 ${isRefreshingSugg ? "opacity-50" : "opacity-100"}`}

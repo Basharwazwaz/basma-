@@ -14,9 +14,19 @@ import {
 } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { Play, Pause, RotateCcw, SkipForward, Settings, Plus, Sparkles, Loader2, X } from "lucide-react";
+import {
+  Play,
+  Pause,
+  RotateCcw,
+  SkipForward,
+  Settings,
+  Plus,
+  Sparkles,
+  Loader2,
+  X,
+} from "lucide-react";
 import { usePomodoro, type PomodoroSettings, type SessionType } from "@/hooks/use-pomodoro";
-import { apiGetTasks, apiCreateTask, apiUpdateTask, apiDeleteTask } from "@/lib/api";
+import { apiGetTasks, apiCreateTask, apiUpdateTask, apiDeleteTask, apiGetPlanner } from "@/lib/api";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
@@ -26,16 +36,8 @@ export const Route = createFileRoute("/planner")({
 });
 
 const days = ["السبت", "الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة"];
-const slots = [
-  { d: 0, t: "٩:٠٠", title: "خوارزميات — مراجعة", cat: "study" },
-  { d: 0, t: "١٤:٠٠", title: "تمرين رياضي", cat: "health" },
-  { d: 1, t: "١٠:٣٠", title: "كورس SQL — وحدة ٣", cat: "learn" },
-  { d: 2, t: "٩:٠٠", title: "امتحان قصير: تحليل", cat: "exam" },
-  { d: 3, t: "١٦:٠٠", title: "قراءة كتاب", cat: "personal" },
-  { d: 4, t: "١١:٠٠", title: "جلسة بومودورو", cat: "study" },
-  { d: 5, t: "١٨:٠٠", title: "مقابلة وهمية", cat: "career" },
-  { d: 6, t: "١٠:٠٠", title: "تأمّل ١٥د", cat: "health" },
-];
+// Keep initial mocked for display when there's no data, but let's just make it empty by default
+// const slots = [ ... ];
 const catColor: Record<string, string> = {
   study: "bg-info/15 text-info border-info/30",
   learn: "bg-primary/15 text-primary border-primary/30",
@@ -155,9 +157,14 @@ function Planner() {
 
   const { state, toggle, reset, skip } = usePomodoro(settings);
 
-  const { data: tasks = [], isLoading } = useQuery({
+  const { data: tasks = [], isLoading: isLoadingTasks } = useQuery({
     queryKey: TASKS_QUERY_KEY,
     queryFn: () => apiGetTasks(),
+  });
+
+  const { data: plannerItems = [], isLoading: isLoadingPlanner } = useQuery({
+    queryKey: ["planner"],
+    queryFn: () => apiGetPlanner(),
   });
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -184,7 +191,7 @@ function Planner() {
     createTaskMutation.mutate({
       title: newTaskTitle.trim(),
       status: "PENDING",
-      is_completed: false
+      is_completed: false,
     });
   };
 
@@ -194,7 +201,27 @@ function Planner() {
   );
 
   const cyclePosition = state.sessionCount % 4;
-  const unscheduled = tasks.filter(t => !t.is_completed);
+  const unscheduled = tasks.filter((t) => !t.is_completed);
+
+  const displaySlots = plannerItems.map((p) => {
+    const d = new Date(p.plan_date);
+    let dayIndex = d.getDay() + 1; // getDay() is 0=Sun, we want 0=Sat. So Sun=1. Mon=2. Tue=3. Wed=4. Thu=5. Fri=6. Sat=0.
+    if (dayIndex === 7) dayIndex = 0;
+
+    // start_time comes like "HH:MM:SS"
+    const tStr = p.start_time ? p.start_time.substring(0, 5) : "١٢:٠٠";
+    const mappedT =
+      toArabicNumerals(parseInt(tStr.split(":")[0])) +
+      ":" +
+      toArabicNumerals(parseInt(tStr.split(":")[1]));
+
+    return {
+      d: dayIndex,
+      t: mappedT,
+      title: p.title,
+      cat: "study", // default for now
+    };
+  });
 
   return (
     <AppShell
@@ -216,10 +243,15 @@ function Planner() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-7">
+          <div className="grid grid-cols-7 relative">
+            {isLoadingPlanner && (
+              <div className="absolute inset-0 flex justify-center items-center bg-background/50 z-10">
+                <Loader2 className="animate-spin" />
+              </div>
+            )}
             {days.map((_, di) => (
               <div key={di} className={`min-h-[320px] space-y-2 p-2 ${di === 0 ? "" : "border-r"}`}>
-                {slots
+                {displaySlots
                   .filter((s) => s.d === di)
                   .map((s, i) => (
                     <div key={i} className={`rounded-lg border p-2 text-xs ${catColor[s.cat]}`}>
@@ -263,24 +295,40 @@ function Planner() {
             </div>
 
             <div className="flex items-center justify-center gap-2">
-              <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10" onClick={reset}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white/70 hover:bg-white/10"
+                onClick={reset}
+              >
                 <RotateCcw className="h-4 w-4" />
               </Button>
               <Button variant="secondary" className="w-36 gap-2 font-semibold" onClick={toggle}>
                 {state.running ? (
-                  <><Pause className="h-4 w-4" /> إيقاف مؤقت</>
+                  <>
+                    <Pause className="h-4 w-4" /> إيقاف مؤقت
+                  </>
                 ) : (
-                  <><Play className="h-4 w-4" /> ابدأ الجلسة</>
+                  <>
+                    <Play className="h-4 w-4" /> ابدأ الجلسة
+                  </>
                 )}
               </Button>
-              <Button variant="ghost" size="icon" className="text-white/70 hover:bg-white/10" onClick={skip}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white/70 hover:bg-white/10"
+                onClick={skip}
+              >
                 <SkipForward className="h-4 w-4" />
               </Button>
             </div>
 
             <div className="mt-4 flex items-center justify-between text-xs opacity-80">
               <span>
-                جلسة {toArabicNumerals(state.sessionCount % 4 || (state.sessionType !== "work" ? 4 : 0))} من {toArabicNumerals(4)} اليوم
+                جلسة{" "}
+                {toArabicNumerals(state.sessionCount % 4 || (state.sessionType !== "work" ? 4 : 0))}{" "}
+                من {toArabicNumerals(4)} اليوم
               </span>
               <Dialog>
                 <DialogTrigger asChild>
@@ -301,34 +349,50 @@ function Planner() {
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {isAddingTask && (
               <form onSubmit={handleAddTask} className="mb-3 flex items-center gap-2">
-                <Input 
-                  size={1} 
-                  className="h-8 text-sm" 
-                  placeholder="مهمة جديدة..." 
+                <Input
+                  size={1}
+                  className="h-8 text-sm"
+                  placeholder="مهمة جديدة..."
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   autoFocus
                 />
-                <Button size="icon" type="submit" className="h-8 w-8 shrink-0" disabled={createTaskMutation.isPending}>
-                  {createTaskMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin"/> : <Plus className="h-3 w-3" />}
+                <Button
+                  size="icon"
+                  type="submit"
+                  className="h-8 w-8 shrink-0"
+                  disabled={createTaskMutation.isPending}
+                >
+                  {createTaskMutation.isPending ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Plus className="h-3 w-3" />
+                  )}
                 </Button>
               </form>
             )}
 
             <div className="space-y-2">
-              {isLoading ? (
-                 <div className="py-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground"/></div>
+              {isLoadingTasks ? (
+                <div className="py-4 flex justify-center">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
               ) : unscheduled.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">لا توجد مهام حالياً</p>
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  لا توجد مهام حالياً
+                </p>
               ) : (
                 unscheduled.map((t) => (
-                  <div key={t.id} className="group flex items-center justify-between rounded-lg border bg-muted/30 p-2 px-3 text-sm transition-colors hover:border-border">
+                  <div
+                    key={t.id}
+                    className="group flex items-center justify-between rounded-lg border bg-muted/30 p-2 px-3 text-sm transition-colors hover:border-border"
+                  >
                     <span>{t.title}</span>
-                    <button 
-                      onClick={() => deleteTaskMutation.mutate(t.id)} 
+                    <button
+                      onClick={() => deleteTaskMutation.mutate(t.id)}
                       className="text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
                     >
                       <X className="h-3.5 w-3.5" />

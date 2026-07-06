@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,116 +8,38 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Flame, BookOpen, Moon, Smartphone, Dumbbell, Brain, Trophy, Search } from "lucide-react";
+import { Trophy, Search, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { apiGetAllChallenges, apiGetUserChallenges, apiEnrollChallenge } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/challenges")({
   head: () => ({ meta: [{ title: "التحديات | بصمة+" }] }),
   component: Challenges,
 });
 
-const active = [
-  {
-    title: "أسبوع بلا تيك توك بعد ٩م",
-    days: 7,
-    progress: 57,
-    icon: Smartphone,
-    color: "text-primary",
-  },
-  { title: "اقرأ ٢٠ دقيقة يوميًا", days: 14, progress: 35, icon: BookOpen, color: "text-info" },
-];
-
-const list = {
-  daily: [
-    {
-      t: "نَم قبل ١٢ منتصف الليل",
-      d: "صحة أفضل تبدأ بنوم منتظم.",
-      level: "سهل",
-      pts: 20,
-      icon: Moon,
-      tag: "صحة",
-    },
-    {
-      t: "٣٠ دقيقة قراءة",
-      d: "كتاب من اختيارك.",
-      level: "سهل",
-      pts: 25,
-      icon: BookOpen,
-      tag: "تعلّم",
-    },
-    {
-      t: "تمرين رياضي ٢٠ دقيقة",
-      d: "حافظ على نشاطك.",
-      level: "متوسط",
-      pts: 30,
-      icon: Dumbbell,
-      tag: "صحة",
-    },
-  ],
-  weekly: [
-    {
-      t: "تقليل وقت الشاشة ٢٠٪",
-      d: "خلال ٧ أيام.",
-      level: "متوسط",
-      pts: 100,
-      icon: Smartphone,
-      tag: "صحة",
-    },
-    {
-      t: "أكمل كورس قصير",
-      d: "أيّ كورس أقل من ٥ ساعات.",
-      level: "متوسط",
-      pts: 150,
-      icon: Brain,
-      tag: "تعلّم",
-    },
-    {
-      t: "اكتب ٧ تأمّلات يوميّة",
-      d: "تأمّل قصير في نهاية كل يوم.",
-      level: "سهل",
-      pts: 80,
-      icon: BookOpen,
-      tag: "رفاه",
-    },
-  ],
-  monthly: [
-    {
-      t: "احتفظ بسلسلة ٣٠ يوم",
-      d: "سلسلة بدون انقطاع.",
-      level: "صعب",
-      pts: 500,
-      icon: Flame,
-      tag: "إنجاز",
-    },
-    {
-      t: "تعلّم مهارة جديدة",
-      d: "خصّص ٢٠ ساعة هذا الشهر.",
-      level: "صعب",
-      pts: 400,
-      icon: Brain,
-      tag: "تعلّم",
-    },
-  ],
-};
-
-// All unique tags across all tabs
 const ALL_TAGS = ["الكل", "صحة", "تعلّم", "رفاه", "إنجاز"];
-
-type TabKey = keyof typeof list;
 
 function Section({
   items,
   searchQuery,
   activeTag,
+  onEnroll,
+  isEnrolling,
 }: {
-  items: typeof list.daily;
+  items: import("@/lib/api").ChallengeData[];
   searchQuery: string;
   activeTag: string;
+  onEnroll: (id: string) => void;
+  isEnrolling: boolean;
 }) {
   const filtered = useMemo(() => {
     return items.filter((c) => {
-      const tagMatch = activeTag === "الكل" || c.tag === activeTag;
-      const searchMatch = !searchQuery || c.t.includes(searchQuery) || c.d.includes(searchQuery);
+      const tagMatch = activeTag === "الكل" || c.category === activeTag;
+      const searchMatch =
+        !searchQuery ||
+        c.title.includes(searchQuery) ||
+        (c.description && c.description.includes(searchQuery));
       return tagMatch && searchMatch;
     });
   }, [items, searchQuery, activeTag]);
@@ -134,22 +57,25 @@ function Section({
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {filtered.map((c) => {
-        const Icon = c.icon;
         return (
-          <Card key={c.t} className="group flex flex-col p-5 transition-all hover:shadow-glow">
+          <Card key={c.id} className="group flex flex-col p-5 transition-all hover:shadow-glow">
             <div className="mb-3 flex items-start justify-between">
               <div className="gradient-warm flex h-11 w-11 items-center justify-center rounded-xl text-primary">
-                <Icon className="h-5 w-5" />
+                <Star className="h-5 w-5" />
               </div>
-              <Badge variant="secondary">{c.tag}</Badge>
+              {c.category && <Badge variant="secondary">{c.category}</Badge>}
             </div>
-            <h3 className="font-bold">{c.t}</h3>
-            <p className="mt-1 flex-1 text-sm text-muted-foreground">{c.d}</p>
+            <h3 className="font-bold">{c.title}</h3>
+            <p className="mt-1 flex-1 text-sm text-muted-foreground">{c.description}</p>
             <div className="mt-4 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">{c.level}</span>
-              <span className="font-semibold text-warning-foreground">+{c.pts} نقطة</span>
+              <span className="text-muted-foreground">{c.duration_days} يوم</span>
+              <span className="font-semibold text-warning-foreground">+{c.points_reward} نقطة</span>
             </div>
-            <Button className="mt-4 gradient-primary shadow-soft transition-transform hover:-translate-y-1">
+            <Button
+              className="mt-4 gradient-primary shadow-soft transition-transform hover:-translate-y-1"
+              onClick={() => onEnroll(c.id)}
+              disabled={isEnrolling}
+            >
               انضمّ
             </Button>
           </Card>
@@ -160,43 +86,83 @@ function Section({
 }
 
 function Challenges() {
+  const queryClient = useQueryClient();
   const [activeTag, setActiveTag] = useState("الكل");
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { data: allChallenges = [], isLoading: isLoadingAll } = useQuery({
+    queryKey: ["all_challenges"],
+    queryFn: () => apiGetAllChallenges(),
+  });
+
+  const { data: userChallenges = [], isLoading: isLoadingUser } = useQuery({
+    queryKey: ["user_challenges"],
+    queryFn: () => apiGetUserChallenges(),
+  });
+
+  const enrollMutation = useMutation({
+    mutationFn: apiEnrollChallenge,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user_challenges"] });
+      toast.success("تم الانضمام للتحدي بنجاح! 💪");
+    },
+    onError: () => {
+      toast.error("حدث خطأ أثناء الانضمام للتحدي.");
+    },
+  });
+
+  // Filter out challenges user is already enrolled in
+  const enrolledIds = new Set(userChallenges.map((uc) => uc.challenge_id));
+  const availableChallenges = allChallenges.filter((c) => !enrolledIds.has(c.id));
+
+  // For demonstration, we just divide available into tabs by duration since we don't have exactly daily/weekly tags
+  const daily = availableChallenges.filter((c) => c.duration_days <= 3);
+  const weekly = availableChallenges.filter((c) => c.duration_days > 3 && c.duration_days <= 14);
+  const monthly = availableChallenges.filter((c) => c.duration_days > 14);
+
+  const activeEnrolled = userChallenges.filter((uc) => uc.status === "ACTIVE");
 
   return (
     <AppShell title="التحديات" subtitle="ابنِ عاداتك من خلال تحديات قصيرة وملموسة.">
       {/* Active challenges */}
-      {active.length > 0 && (
-        <Card className="mb-6 p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-warning-foreground" />
-            <h3 className="text-lg font-bold">تحدياتك النشطة</h3>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {active.map((a) => {
-              const Icon = a.icon;
-              return (
-                <div key={a.title} className="rounded-xl border bg-muted/30 p-4">
-                  <div className="mb-2 flex items-center gap-3">
-                    <div
-                      className={`gradient-warm inline-flex h-9 w-9 items-center justify-center rounded-lg ${a.color}`}
-                    >
-                      <Icon className="h-4 w-4" />
+      {isLoadingUser ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        activeEnrolled.length > 0 && (
+          <Card className="mb-6 p-5">
+            <div className="mb-4 flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-warning-foreground" />
+              <h3 className="text-lg font-bold">تحدياتك النشطة</h3>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {activeEnrolled.map((a) => {
+                const c = a.challenge;
+                if (!c) return null;
+                const progressPct = Math.round((a.progress_days / c.duration_days) * 100);
+
+                return (
+                  <div key={a.id} className="rounded-xl border bg-muted/30 p-4">
+                    <div className="mb-2 flex items-center gap-3">
+                      <div className="gradient-warm inline-flex h-9 w-9 items-center justify-center rounded-lg text-primary">
+                        <Star className="h-4 w-4" />
+                      </div>
+                      <div className="font-semibold">{c.title}</div>
                     </div>
-                    <div className="font-semibold">{a.title}</div>
+                    <Progress value={progressPct} className="h-2" />
+                    <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                      <span>
+                        {a.progress_days} / {c.duration_days} يوم
+                      </span>
+                      <span>{progressPct}٪</span>
+                    </div>
                   </div>
-                  <Progress value={a.progress} className="h-2" />
-                  <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      {Math.round((a.progress / 100) * a.days)} / {a.days} يوم
-                    </span>
-                    <span>{a.progress}٪</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
+                );
+              })}
+            </div>
+          </Card>
+        )
       )}
 
       {/* Search + Tag filter bar */}
@@ -231,18 +197,57 @@ function Challenges() {
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="daily">
-        <TabsList>
-          <TabsTrigger value="daily">يومي</TabsTrigger>
-          <TabsTrigger value="weekly">أسبوعي</TabsTrigger>
-          <TabsTrigger value="monthly">شهري</TabsTrigger>
-        </TabsList>
-        {(["daily", "weekly", "monthly"] as TabKey[]).map((tab) => (
-          <TabsContent key={tab} value={tab} className="mt-6">
-            <Section items={list[tab]} searchQuery={searchQuery} activeTag={activeTag} />
+      {isLoadingAll ? (
+        <div className="flex justify-center py-10">
+          <Loader2 className="animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <Tabs defaultValue="all">
+          <TabsList>
+            <TabsTrigger value="all">الكل</TabsTrigger>
+            <TabsTrigger value="daily">قصير (١-٣ أيام)</TabsTrigger>
+            <TabsTrigger value="weekly">متوسط (أسبوع)</TabsTrigger>
+            <TabsTrigger value="monthly">طويل (شهر)</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="all" className="mt-6">
+            <Section
+              items={availableChallenges}
+              searchQuery={searchQuery}
+              activeTag={activeTag}
+              onEnroll={(id) => enrollMutation.mutate(id)}
+              isEnrolling={enrollMutation.isPending}
+            />
           </TabsContent>
-        ))}
-      </Tabs>
+          <TabsContent value="daily" className="mt-6">
+            <Section
+              items={daily}
+              searchQuery={searchQuery}
+              activeTag={activeTag}
+              onEnroll={(id) => enrollMutation.mutate(id)}
+              isEnrolling={enrollMutation.isPending}
+            />
+          </TabsContent>
+          <TabsContent value="weekly" className="mt-6">
+            <Section
+              items={weekly}
+              searchQuery={searchQuery}
+              activeTag={activeTag}
+              onEnroll={(id) => enrollMutation.mutate(id)}
+              isEnrolling={enrollMutation.isPending}
+            />
+          </TabsContent>
+          <TabsContent value="monthly" className="mt-6">
+            <Section
+              items={monthly}
+              searchQuery={searchQuery}
+              activeTag={activeTag}
+              onEnroll={(id) => enrollMutation.mutate(id)}
+              isEnrolling={enrollMutation.isPending}
+            />
+          </TabsContent>
+        </Tabs>
+      )}
     </AppShell>
   );
 }

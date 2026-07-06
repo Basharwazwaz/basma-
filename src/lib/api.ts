@@ -344,7 +344,10 @@ export interface TaskData {
   updated_at: string;
 }
 
-export async function apiGetTasks(params?: { goal_id?: string; due_date?: string }): Promise<TaskData[]> {
+export async function apiGetTasks(params?: {
+  goal_id?: string;
+  due_date?: string;
+}): Promise<TaskData[]> {
   const qs = new URLSearchParams();
   if (params?.goal_id) qs.append("goal_id", params.goal_id);
   if (params?.due_date) qs.append("due_date", params.due_date);
@@ -393,7 +396,10 @@ export async function apiCreatePlannerItem(payload: Partial<PlannerData>): Promi
   });
 }
 
-export async function apiUpdatePlannerItem(id: string, payload: Partial<PlannerData>): Promise<PlannerData> {
+export async function apiUpdatePlannerItem(
+  id: string,
+  payload: Partial<PlannerData>,
+): Promise<PlannerData> {
   return apiFetch<PlannerData>(`/productivity/planner/${id}`, {
     method: "PUT",
     body: payload,
@@ -402,4 +408,165 @@ export async function apiUpdatePlannerItem(id: string, payload: Partial<PlannerD
 
 export async function apiDeletePlannerItem(id: string): Promise<void> {
   await apiFetch(`/productivity/planner/${id}`, { method: "DELETE" });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Health & Mood helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface MoodData {
+  id: string;
+  user_id: string;
+  record_date: string;
+  mood_score: number;
+  stress_score: number;
+  mood_state: string;
+  note: string | null;
+  created_at: string;
+}
+
+export async function apiGetMoods(params?: {
+  start_date?: string;
+  end_date?: string;
+}): Promise<MoodData[]> {
+  const qs = new URLSearchParams();
+  if (params?.start_date) qs.append("start_date", params.start_date);
+  if (params?.end_date) qs.append("end_date", params.end_date);
+  const query = qs.toString();
+  return apiFetch<MoodData[]>(`/health/mood${query ? "?" + query : ""}`);
+}
+
+export async function apiSubmitMood(payload: Partial<MoodData>): Promise<MoodData> {
+  return apiFetch<MoodData>("/health/mood", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Dashboard helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface DashboardSummaryData {
+  scores: {
+    t: string;
+    v: number;
+    c: string;
+    i: string;
+    to: string;
+  }[];
+  screen_time: {
+    d: string;
+    h?: number;
+    v?: number;
+  }[];
+  screen_time_avg: number;
+  mood_chart: {
+    d: string;
+    h?: number;
+    v?: number;
+  }[];
+  suggestions: {
+    t: string;
+    d: string;
+    a: string;
+  }[];
+}
+
+export async function apiGetDashboardSummary(): Promise<DashboardSummaryData> {
+  return apiFetch<DashboardSummaryData>("/dashboard/summary");
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Gamification helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface ChallengeData {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  duration_days: number;
+  points_reward: number;
+  created_at: string;
+}
+
+export interface UserChallengeData {
+  id: string;
+  user_id: string;
+  challenge_id: string;
+  status: "ACTIVE" | "COMPLETED" | "FAILED";
+  progress_days: number;
+  started_at: string;
+  completed_at: string | null;
+  challenge?: ChallengeData;
+}
+
+export async function apiGetAllChallenges(): Promise<ChallengeData[]> {
+  return apiFetch<ChallengeData[]>("/gamification/challenges");
+}
+
+export async function apiGetUserChallenges(): Promise<UserChallengeData[]> {
+  return apiFetch<UserChallengeData[]>("/gamification/challenges/user");
+}
+
+export async function apiEnrollChallenge(challenge_id: string): Promise<UserChallengeData> {
+  return apiFetch<UserChallengeData>("/gamification/challenges/enroll", {
+    method: "POST",
+    body: { challenge_id },
+  });
+}
+
+export async function apiUpdateUserChallenge(
+  id: string,
+  payload: Partial<UserChallengeData>,
+): Promise<UserChallengeData> {
+  return apiFetch<UserChallengeData>(`/gamification/challenges/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export interface AchievementData {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  icon: string | null;
+  earned_at: string;
+}
+
+export async function apiGetAchievements(): Promise<AchievementData[]> {
+  return apiFetch<AchievementData[]>("/gamification/achievements");
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Notifications helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface NotificationData {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string | null;
+  is_read: boolean;
+  action_url: string | null;
+  created_at: string;
+}
+
+export async function apiGetNotifications(
+  unread_only: boolean = false,
+): Promise<NotificationData[]> {
+  const query = unread_only ? "?unread_only=true" : "";
+  return apiFetch<NotificationData[]>(`/notifications${query}`);
+}
+
+export async function apiMarkNotificationRead(id: string): Promise<NotificationData> {
+  return apiFetch<NotificationData>(`/notifications/${id}/read`, {
+    method: "PUT",
+  });
+}
+
+export async function apiMarkAllNotificationsRead(): Promise<void> {
+  await apiFetch(`/notifications/read-all`, { method: "PUT" });
 }

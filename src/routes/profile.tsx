@@ -189,19 +189,11 @@ function Profile() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-city">المدينة</Label>
-              <Input
-                id="p-city"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
+              <Input id="p-city" value={city} onChange={(e) => setCity(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-major">التخصص</Label>
-              <Input
-                id="p-major"
-                value={major}
-                onChange={(e) => setMajor(e.target.value)}
-              />
+              <Input id="p-major" value={major} onChange={(e) => setMajor(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="p-age">العمر</Label>

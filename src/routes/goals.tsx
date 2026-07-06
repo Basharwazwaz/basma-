@@ -8,7 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Target, CheckCircle2, Calendar, X, Pause, Play, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Plus,
+  Target,
+  CheckCircle2,
+  Calendar,
+  X,
+  Pause,
+  Play,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { apiGetGoals, apiCreateGoal, apiUpdateGoal, apiDeleteGoal } from "@/lib/api";
 import { toast } from "sonner";
 
@@ -50,7 +60,13 @@ function Goals() {
   });
 
   const updateGoalMutation = useMutation({
-    mutationFn: ({ id, ...payload }: { id: string; status?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ABANDONED" }) => apiUpdateGoal(id, payload),
+    mutationFn: ({
+      id,
+      ...payload
+    }: {
+      id: string;
+      status?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
+    }) => apiUpdateGoal(id, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY }),
   });
 
@@ -68,7 +84,7 @@ function Goals() {
       setFormError("أدخل عنوان الهدف");
       return;
     }
-    // Note: Since DB doesn't have a 'unit' and 'target' scalar natively besides progress_percent, 
+    // Note: Since DB doesn't have a 'unit' and 'target' scalar natively besides progress_percent,
     // we can encode the target info into description for the UI to parse later, or just save it in description.
     const descriptionStr = JSON.stringify({ tgt: Number(target) || 100, unit: unit.trim() || "٪" });
 
@@ -86,12 +102,15 @@ function Goals() {
 
   function togglePause(id: string, currentStatus: string) {
     const newStatus = currentStatus === "IN_PROGRESS" ? "NOT_STARTED" : "IN_PROGRESS";
-    updateGoalMutation.mutate({ id, status: newStatus as any });
+    updateGoalMutation.mutate({
+      id,
+      status: newStatus as "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ABANDONED",
+    });
   }
 
   // Derived state
-  const activeGoals = goals.filter(g => g.status !== "COMPLETED" && g.status !== "ABANDONED");
-  const completedGoals = goals.filter(g => g.status === "COMPLETED");
+  const activeGoals = goals.filter((g) => g.status !== "COMPLETED" && g.status !== "ABANDONED");
+  const completedGoals = goals.filter((g) => g.status === "COMPLETED");
 
   const parseDescription = (desc: string | null) => {
     try {
@@ -108,7 +127,9 @@ function Goals() {
         {/* Goals list */}
         <div className="space-y-4">
           {isLoading ? (
-            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-muted-foreground" /></div>
+            <div className="flex justify-center py-10">
+              <Loader2 className="animate-spin text-muted-foreground" />
+            </div>
           ) : activeGoals.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-16 text-center">
               <Target className="mb-3 h-10 w-10 text-muted-foreground/40" />
@@ -119,7 +140,7 @@ function Goals() {
             activeGoals.map((g) => {
               const paused = g.status === "NOT_STARTED";
               const { tgt, unit } = parseDescription(g.description);
-              
+
               return (
                 <Card key={g.id} className={`p-5 transition-all ${paused ? "opacity-60" : ""}`}>
                   <div className="mb-3 flex items-start justify-between gap-3">
@@ -133,7 +154,9 @@ function Goals() {
                           <Calendar className="h-3.5 w-3.5" />
                           <span>الموعد: {g.target_date || "—"}</span>
                           {paused && (
-                            <Badge variant="secondary" className="text-[10px]">متوقف</Badge>
+                            <Badge variant="secondary" className="text-[10px]">
+                              متوقف
+                            </Badge>
                           )}
                         </div>
                       </div>
@@ -150,7 +173,11 @@ function Goals() {
                         onClick={() => togglePause(g.id, g.status)}
                         disabled={updateGoalMutation.isPending}
                       >
-                        {paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                        {paused ? (
+                          <Play className="h-3.5 w-3.5" />
+                        ) : (
+                          <Pause className="h-3.5 w-3.5" />
+                        )}
                       </Button>
                       <Button
                         variant="ghost"
@@ -192,7 +219,9 @@ function Goals() {
                     className="flex items-center justify-between rounded-lg border bg-muted/30 p-3 text-sm"
                   >
                     <span>{g.title}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(g.updated_at).toLocaleDateString('ar-SA')}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(g.updated_at).toLocaleDateString("ar-SA")}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -253,8 +282,16 @@ function Goals() {
               </div>
             )}
 
-            <Button type="submit" className="w-full gradient-primary shadow-soft" disabled={createGoalMutation.isPending}>
-              {createGoalMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "أضف الهدف"}
+            <Button
+              type="submit"
+              className="w-full gradient-primary shadow-soft"
+              disabled={createGoalMutation.isPending}
+            >
+              {createGoalMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "أضف الهدف"
+              )}
             </Button>
           </form>
         </Card>

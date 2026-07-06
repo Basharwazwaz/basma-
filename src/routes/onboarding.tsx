@@ -174,7 +174,9 @@ function Onboarding() {
       try {
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(PROFILE_KEY);
-      } catch {}
+      } catch (err) {
+        console.error(err);
+      }
       // Invalidate profile cache so profile.tsx shows fresh data
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
       toast.success("مرحباً! تم إنشاء ملفك الشخصي 🎉", {
@@ -185,9 +187,7 @@ function Onboarding() {
     },
     onError: (err) => {
       const msg =
-        err instanceof ApiError
-          ? err.message
-          : "حدث خطأ أثناء حفظ بياناتك. حاول مرة أخرى.";
+        err instanceof ApiError ? err.message : "حدث خطأ أثناء حفظ بياناتك. حاول مرة أخرى.";
       toast.error("فشل حفظ الملف الشخصي", { description: msg });
     },
   });
