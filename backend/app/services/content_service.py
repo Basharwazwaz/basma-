@@ -1,0 +1,71 @@
+import uuid
+from typing import List, Optional
+
+from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
+
+from app.models.content import LearningContent, Recommendations
+
+
+async def get_all_content(
+    db: AsyncSession,
+    content_type: Optional[str] = None,
+    category: Optional[str] = None,
+) -> List[LearningContent]:
+    stmt = select(LearningContent)
+    
+    if content_type:
+        stmt = stmt.where(LearningContent.content_type == content_type)
+    if category:
+        stmt = stmt.where(LearningContent.category == category)
+        
+    stmt = stmt.order_by(LearningContent.created_at.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def get_content_by_id(
+    db: AsyncSession, content_id: uuid.UUID
+) -> Optional[LearningContent]:
+    result = await db.execute(
+        select(LearningContent).where(LearningContent.id == content_id)
+    )
+    return result.scalars().first()
+
+
+async def get_user_recommendations(
+    db: AsyncSession, user_id: uuid.UUID
+) -> List[Recommendations]:
+    stmt = (
+        select(Recommendations)
+        .options(selectinload(Recommendations.content))
+        .where(
+            Recommendations.user_id == user_id,
+            Recommendations.is_dismissed == False,  # noqa: E712
+        )
+        .order_by(Recommendations.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def dismiss_recommendation(
+    db: AsyncSession, user_id: uuid.UUID, recommendation_id: uuid.UUID
+) -> Recommendations:
+    result = await db.execute(
+        select(Recommendations).where(
+            Recommendations.id == recommendation_id,
+            Recommendations.user_id == user_id,
+        )
+    )
+    db_rec = result.scalars().first()
+    
+    if not db_rec:
+        raise HTTPException(status_code=404, detail="Recommendation not found")
+        
+    db_rec.is_dismissed = True
+    await db.commit()
+    await db.refresh(db_rec)
+    return db_rec

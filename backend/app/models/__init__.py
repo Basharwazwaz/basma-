@@ -1,4 +1,4 @@
-from app.models.user import Users, Profiles, RoleEnum
+from app.models.user import Users, Profiles
 from app.models.auth import RefreshTokens
 from app.models.health import Mood, DigitalHabits, MoodEnum
 from app.models.productivity import Goals, Tasks, Planner, GoalStatusEnum, TaskStatusEnum
@@ -8,7 +8,7 @@ from app.models.analytics import WeeklyReports, AIInsights
 from app.models.notifications import Notifications
 
 __all__ = [
-    "Users", "Profiles", "RoleEnum", "RefreshTokens",
+    "Users", "Profiles", "RefreshTokens",
     "Mood", "DigitalHabits", "MoodEnum",
     "Goals", "Tasks", "Planner", "GoalStatusEnum", "TaskStatusEnum",
     "Challenges", "UserChallenges", "Achievements", "ChallengeStatusEnum",

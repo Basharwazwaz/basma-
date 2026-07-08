@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Bookmark, Clock, Search, PlayCircle, BookOpen, FileText, Briefcase } from "lucide-react";
+import { Bookmark, Clock, Search, PlayCircle, BookOpen, FileText, Briefcase, Loader2 } from "lucide-react";
+import { apiGetLearningContent } from "@/lib/api";
 
 export const Route = createFileRoute("/learning-hub")({
   head: () => ({ meta: [{ title: "مركز التعلّم | بصمة+" }] }),
@@ -13,75 +15,22 @@ export const Route = createFileRoute("/learning-hub")({
 });
 
 const TYPE_MAP: Record<string, string> = {
-  الكل: "all",
-  كورسات: "course",
-  فيديوهات: "video",
-  كتب: "book",
-  مقالات: "article",
+  الكل: "",
+  كورسات: "COURSE",
+  فيديوهات: "VIDEO",
+  كتب: "BOOK",
+  مقالات: "ARTICLE",
 };
 
 const FILTERS = ["الكل", "كورسات", "فيديوهات", "كتب", "مقالات"];
-const LEVELS = ["مبتدئ", "متوسط", "متقدّم"];
 
-const ALL_ITEMS = [
-  {
-    type: "course",
-    t: "أساسيات SQL للبيانات",
-    dur: "٣ س",
-    level: "مبتدئ",
-    topic: "بيانات",
-    icon: PlayCircle,
-  },
-  {
-    type: "book",
-    t: "العادات الذرية",
-    dur: "٢٥٠ ص",
-    level: "—",
-    topic: "تطوير ذاتي",
-    icon: BookOpen,
-  },
-  {
-    type: "article",
-    t: "كيف تستعدّ لمقابلة تقنية",
-    dur: "٨ د",
-    level: "متوسط",
-    topic: "مهنة",
-    icon: FileText,
-  },
-  {
-    type: "course",
-    t: "بايثون للمبتدئين",
-    dur: "٦ س",
-    level: "مبتدئ",
-    topic: "برمجة",
-    icon: PlayCircle,
-  },
-  {
-    type: "video",
-    t: "تقنيات تركيز عميقة",
-    dur: "٢٠ د",
-    level: "متوسط",
-    topic: "إنتاجية",
-    icon: PlayCircle,
-  },
-  {
-    type: "article",
-    t: "إدارة وقت الدراسة الجامعيّة",
-    dur: "١٢ د",
-    level: "مبتدئ",
-    topic: "دراسة",
-    icon: FileText,
-  },
-  {
-    type: "course",
-    t: "تصميم واجهات حديث",
-    dur: "٤ س",
-    level: "متوسط",
-    topic: "تصميم",
-    icon: PlayCircle,
-  },
-  { type: "book", t: "العمل العميق", dur: "٣١٠ ص", level: "—", topic: "إنتاجية", icon: BookOpen },
-];
+const ICON_MAP: Record<string, any> = {
+  COURSE: PlayCircle,
+  VIDEO: PlayCircle,
+  BOOK: BookOpen,
+  ARTICLE: FileText,
+};
+
 const paths = [
   { t: "مطوّر واجهات", c: "React · TypeScript · Tailwind", n: 12 },
   { t: "عالم بيانات", c: "Python · SQL · ML", n: 18 },
@@ -90,17 +39,21 @@ const paths = [
 
 function Hub() {
   const [activeFilter, setActiveFilter] = useState("الكل");
-  const [activeLevel, setActiveLevel] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const { data: allItems, isLoading } = useQuery({
+    queryKey: ["learning-content"],
+    queryFn: () => apiGetLearningContent(),
+  });
+
   const filtered = useMemo(() => {
-    return ALL_ITEMS.filter((item) => {
-      const typeMatch = activeFilter === "الكل" || item.type === TYPE_MAP[activeFilter];
-      const levelMatch = !activeLevel || activeLevel === "الكل" || item.level === activeLevel;
-      const searchMatch = !searchQuery || item.t.toLowerCase().includes(searchQuery.toLowerCase());
-      return typeMatch && levelMatch && searchMatch;
+    if (!allItems) return [];
+    return allItems.filter((item) => {
+      const typeMatch = activeFilter === "الكل" || item.content_type === TYPE_MAP[activeFilter];
+      const searchMatch = !searchQuery || item.title.toLowerCase().includes(searchQuery.toLowerCase()) || (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return typeMatch && searchMatch;
     });
-  }, [activeFilter, activeLevel, searchQuery]);
+  }, [allItems, activeFilter, searchQuery]);
 
   return (
     <AppShell title="مركز التعلّم" subtitle="كورسات، كتب، ومقالات مختارة لك.">
@@ -131,20 +84,6 @@ function Hub() {
               </Badge>
             ))}
           </div>
-
-          {/* Level filters */}
-          <div className="flex flex-wrap gap-2">
-            {LEVELS.map((l) => (
-              <Badge
-                key={l}
-                variant={activeLevel === l ? "default" : "secondary"}
-                className="cursor-pointer select-none transition-all"
-                onClick={() => setActiveLevel(activeLevel === l ? null : l)}
-              >
-                {l}
-              </Badge>
-            ))}
-          </div>
         </div>
       </Card>
 
@@ -158,7 +97,11 @@ function Hub() {
             </Badge>
           </div>
 
-          {filtered.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 text-center">
               <Search className="mb-3 h-10 w-10 text-muted-foreground/40" />
               <p className="font-semibold text-muted-foreground">لا توجد نتائج</p>
@@ -169,7 +112,6 @@ function Hub() {
                 className="mt-4"
                 onClick={() => {
                   setActiveFilter("الكل");
-                  setActiveLevel(null);
                   setSearchQuery("");
                 }}
               >
@@ -179,10 +121,10 @@ function Hub() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((i) => {
-                const Icon = i.icon;
+                const Icon = ICON_MAP[i.content_type] || FileText;
                 return (
                   <Card
-                    key={i.t}
+                    key={i.id}
                     className="group flex flex-col p-5 transition-all hover:shadow-glow"
                   >
                     <div className="mb-3 flex items-start justify-between">
@@ -193,17 +135,26 @@ function Hub() {
                         <Bookmark className="h-4 w-4" />
                       </button>
                     </div>
-                    <h3 className="font-bold leading-snug">{i.t}</h3>
+                    <h3 className="font-bold leading-snug">{i.title}</h3>
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3.5 w-3.5" /> {i.dur}
-                      </span>
-                      <Badge variant="secondary" className="text-xs">
-                        {i.topic}
-                      </Badge>
+                      {i.estimated_minutes && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3.5 w-3.5" /> {i.estimated_minutes} د
+                        </span>
+                      )}
+                      {i.category && (
+                        <Badge variant="secondary" className="text-xs">
+                          {i.category}
+                        </Badge>
+                      )}
                     </div>
-                    <Button variant="outline" size="sm" className="mt-4">
-                      ابدأ
+                    {i.description && (
+                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{i.description}</p>
+                    )}
+                    <Button variant="outline" size="sm" className="mt-auto pt-4" asChild>
+                      <a href={i.url || "#"} target="_blank" rel="noopener noreferrer">
+                        ابدأ
+                      </a>
                     </Button>
                   </Card>
                 );

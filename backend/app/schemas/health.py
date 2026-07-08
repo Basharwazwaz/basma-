@@ -52,3 +52,26 @@ class DigitalHabitsResponse(DigitalHabitsBase):
 
     class Config:
         from_attributes = True
+
+# --- Analytics ---
+
+class ScreenTimeData(BaseModel):
+    d: str
+    h: float
+
+class SleepStressData(BaseModel):
+    d: str
+    sleep: float
+    stress: int
+
+class AppUsageData(BaseModel):
+    name: str
+    value: float
+    color: str
+
+class DigitalHealthAnalyticsResponse(BaseModel):
+    health_score: int
+    score_trend: int
+    screen_time_chart: List[ScreenTimeData]
+    sleep_stress_chart: List[SleepStressData]
+    app_usage_chart: List[AppUsageData]

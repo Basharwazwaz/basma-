@@ -19,17 +19,24 @@ def create_app() -> FastAPI:
         redoc_url=f"{settings.API_V1_STR}/redoc",
     )
 
-    # Set up CORS middleware
+    # Set up CORS middleware - Must be first middleware
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.BACKEND_CORS_ORIGINS,
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        max_age=3600,
     )
 
     # Set up global exception handlers
     setup_exception_handlers(app)
+
+    # Add OPTIONS handler for CORS preflight requests
+    @app.options("/{path:path}")
+    async def preflight_handler(path: str):
+        """Handle CORS preflight requests."""
+        return None
 
     # Include the main API router
     app.include_router(api_router, prefix=settings.API_V1_STR)

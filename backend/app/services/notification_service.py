@@ -1,41 +1,61 @@
 import uuid
 from typing import List
-from sqlalchemy.orm import Session
+
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from app.models.notifications import Notifications
 from app.schemas.notifications import NotificationCreate
 
-def get_user_notifications(db: Session, user_id: uuid.UUID, unread_only: bool = False) -> List[Notifications]:
-    query = db.query(Notifications).filter(Notifications.user_id == user_id)
-    if unread_only:
-        query = query.filter(Notifications.is_read == False)
-    return query.order_by(Notifications.created_at.desc()).all()
 
-def create_notification(db: Session, notification_in: NotificationCreate) -> Notifications:
+async def get_user_notifications(
+    db: AsyncSession, user_id: uuid.UUID, unread_only: bool = False
+) -> List[Notifications]:
+    stmt = select(Notifications).where(Notifications.user_id == user_id)
+    if unread_only:
+        stmt = stmt.where(Notifications.is_read == False)  # noqa: E712
+    stmt = stmt.order_by(Notifications.created_at.desc())
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def create_notification(
+    db: AsyncSession, notification_in: NotificationCreate
+) -> Notifications:
     db_notif = Notifications(**notification_in.model_dump())
     db.add(db_notif)
-    db.commit()
-    db.refresh(db_notif)
+    await db.commit()
+    await db.refresh(db_notif)
     return db_notif
 
-def mark_as_read(db: Session, user_id: uuid.UUID, notification_id: uuid.UUID) -> Notifications:
-    db_notif = db.query(Notifications).filter(
-        Notifications.id == notification_id,
-        Notifications.user_id == user_id
-    ).first()
-    
+
+async def mark_as_read(
+    db: AsyncSession, user_id: uuid.UUID, notification_id: uuid.UUID
+) -> Notifications:
+    result = await db.execute(
+        select(Notifications).where(
+            Notifications.id == notification_id,
+            Notifications.user_id == user_id,
+        )
+    )
+    db_notif = result.scalars().first()
     if not db_notif:
         raise HTTPException(status_code=404, detail="Notification not found")
-        
+
     db_notif.is_read = True
-    db.commit()
-    db.refresh(db_notif)
+    await db.commit()
+    await db.refresh(db_notif)
     return db_notif
 
-def mark_all_as_read(db: Session, user_id: uuid.UUID):
-    db.query(Notifications).filter(
-        Notifications.user_id == user_id,
-        Notifications.is_read == False
-    ).update({"is_read": True})
-    db.commit()
+
+async def mark_all_as_read(db: AsyncSession, user_id: uuid.UUID) -> None:
+    result = await db.execute(
+        select(Notifications).where(
+            Notifications.user_id == user_id,
+            Notifications.is_read == False,  # noqa: E712
+        )
+    )
+    for notif in result.scalars().all():
+        notif.is_read = True
+    await db.commit()

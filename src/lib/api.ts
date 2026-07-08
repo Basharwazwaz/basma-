@@ -517,6 +517,34 @@ export async function apiEnrollChallenge(challenge_id: string): Promise<UserChal
   });
 }
 
+export async function apiLogMood(payload: {
+  mood_score: number;
+  stress_score: number;
+  mood_state: string;
+  note?: string;
+}): Promise<MoodData> {
+  return apiFetch<MoodData>("/health/mood", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Digital Health / Analytics helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface DigitalHealthAnalyticsData {
+  health_score: number;
+  score_trend: number;
+  screen_time_chart: { d: string; h: number }[];
+  sleep_stress_chart: { d: string; sleep: number; stress: number }[];
+  app_usage_chart: { name: string; value: number; color: string }[];
+}
+
+export async function apiGetDigitalHealthAnalytics(days: number = 7): Promise<DigitalHealthAnalyticsData> {
+  return apiFetch<DigitalHealthAnalyticsData>(`/health/analytics?days=${days}`);
+}
+
 export async function apiUpdateUserChallenge(
   id: string,
   payload: Partial<UserChallengeData>,
@@ -570,3 +598,82 @@ export async function apiMarkNotificationRead(id: string): Promise<NotificationD
 export async function apiMarkAllNotificationsRead(): Promise<void> {
   await apiFetch(`/notifications/read-all`, { method: "PUT" });
 }
+
+// ──────────────────────────────────────────────────────────────────
+// Content helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface LearningContentData {
+  id: string;
+  title: string;
+  description: string | null;
+  content_type: string;
+  url: string | null;
+  category: string | null;
+  estimated_minutes: number | null;
+  created_at: string;
+}
+
+export interface RecommendationData {
+  id: string;
+  user_id: string;
+  content_id: string;
+  reason: string | null;
+  is_dismissed: boolean;
+  content: LearningContentData;
+  created_at: string;
+}
+
+export async function apiGetLearningContent(params?: {
+  content_type?: string;
+  category?: string;
+}): Promise<LearningContentData[]> {
+  const qs = new URLSearchParams();
+  if (params?.content_type) qs.append("content_type", params.content_type);
+  if (params?.category) qs.append("category", params.category);
+  const query = qs.toString();
+  return apiFetch<LearningContentData[]>(`/content${query ? "?" + query : ""}`);
+}
+
+export async function apiGetContentById(id: string): Promise<LearningContentData> {
+  return apiFetch<LearningContentData>(`/content/${id}`);
+}
+
+export async function apiGetRecommendations(): Promise<RecommendationData[]> {
+  return apiFetch<RecommendationData[]>("/content/recommendations");
+}
+
+export async function apiDismissRecommendation(id: string): Promise<RecommendationData> {
+  return apiFetch<RecommendationData>(`/content/recommendations/${id}/dismiss`, {
+    method: "PUT",
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// AI Coach helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface CoachMessageData {
+  id: string;
+  role: "user" | "ai";
+  content: string;
+  created_at: string;
+}
+
+export async function apiGetCoachMessages(): Promise<CoachMessageData[]> {
+  return apiFetch<CoachMessageData[]>("/coach/messages");
+}
+
+export async function apiSendCoachMessage(content: string): Promise<CoachMessageData> {
+  return apiFetch<CoachMessageData>("/coach/chat", {
+    method: "POST",
+    body: { content },
+  });
+}
+
+export async function apiClearCoachMessages(): Promise<void> {
+  return apiFetch<void>("/coach/messages", {
+    method: "DELETE",
+  });
+}
+

@@ -1,85 +1,129 @@
 import uuid
 from typing import List, Optional
-from sqlalchemy.orm import Session
+
 from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
 
 from app.models.gamification import Challenges, UserChallenges, Achievements
-from app.schemas.gamification import UserChallengeCreate, UserChallengeUpdate
+from app.schemas.gamification import UserChallengeUpdate
 
-# --- Challenges ---
 
-def get_all_challenges(db: Session) -> List[Challenges]:
+# ---------------------------------------------------------------------------
+# Challenges
+# ---------------------------------------------------------------------------
+
+async def get_all_challenges(db: AsyncSession) -> List[Challenges]:
     """Returns all available platform challenges."""
-    return db.query(Challenges).all()
+    result = await db.execute(select(Challenges))
+    return result.scalars().all()
 
-def get_user_challenges(db: Session, user_id: uuid.UUID) -> List[UserChallenges]:
+
+async def get_user_challenges(
+    db: AsyncSession, user_id: uuid.UUID
+) -> List[UserChallenges]:
     """Returns challenges enrolled by the user."""
-    return db.query(UserChallenges).filter(UserChallenges.user_id == user_id).all()
+    result = await db.execute(
+        select(UserChallenges).where(UserChallenges.user_id == user_id)
+    )
+    return result.scalars().all()
 
-def enroll_user_in_challenge(db: Session, user_id: uuid.UUID, challenge_id: uuid.UUID) -> UserChallenges:
-    # Check if challenge exists
-    challenge = db.query(Challenges).filter(Challenges.id == challenge_id).first()
+
+async def enroll_user_in_challenge(
+    db: AsyncSession, user_id: uuid.UUID, challenge_id: uuid.UUID
+) -> UserChallenges:
+    # Check challenge exists
+    ch_result = await db.execute(
+        select(Challenges).where(Challenges.id == challenge_id)
+    )
+    challenge = ch_result.scalars().first()
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
-        
-    # Check if already enrolled
-    existing = db.query(UserChallenges).filter(
-        UserChallenges.user_id == user_id, 
-        UserChallenges.challenge_id == challenge_id
-    ).first()
-    
+
+    # Check already enrolled
+    ex_result = await db.execute(
+        select(UserChallenges).where(
+            UserChallenges.user_id == user_id,
+            UserChallenges.challenge_id == challenge_id,
+        )
+    )
+    existing = ex_result.scalars().first()
     if existing:
         return existing
-        
+
     new_enrollment = UserChallenges(
         user_id=user_id,
         challenge_id=challenge_id,
         status="ACTIVE",
-        progress_days=0
+        progress_days=0,
     )
     db.add(new_enrollment)
-    db.commit()
-    db.refresh(new_enrollment)
+    await db.commit()
+    await db.refresh(new_enrollment)
     return new_enrollment
 
-def update_user_challenge(db: Session, user_id: uuid.UUID, user_challenge_id: uuid.UUID, update_in: UserChallengeUpdate) -> UserChallenges:
-    db_uchallenge = db.query(UserChallenges).filter(
-        UserChallenges.id == user_challenge_id,
-        UserChallenges.user_id == user_id
-    ).first()
-    
+
+async def update_user_challenge(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    user_challenge_id: uuid.UUID,
+    update_in: UserChallengeUpdate,
+) -> UserChallenges:
+    result = await db.execute(
+        select(UserChallenges).where(
+            UserChallenges.id == user_challenge_id,
+            UserChallenges.user_id == user_id,
+        )
+    )
+    db_uchallenge = result.scalars().first()
     if not db_uchallenge:
         raise HTTPException(status_code=404, detail="User challenge not found")
-        
-    update_data = update_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
+
+    for field, value in update_in.model_dump(exclude_unset=True).items():
         setattr(db_uchallenge, field, value)
-        
-    db.commit()
-    db.refresh(db_uchallenge)
+
+    await db.commit()
+    await db.refresh(db_uchallenge)
     return db_uchallenge
 
-# --- Achievements ---
 
-def get_user_achievements(db: Session, user_id: uuid.UUID) -> List[Achievements]:
-    return db.query(Achievements).filter(Achievements.user_id == user_id).all()
+# ---------------------------------------------------------------------------
+# Achievements
+# ---------------------------------------------------------------------------
 
-def award_achievement(db: Session, user_id: uuid.UUID, title: str, description: Optional[str] = None, icon: Optional[str] = None) -> Achievements:
-    existing = db.query(Achievements).filter(
-        Achievements.user_id == user_id,
-        Achievements.title == title
-    ).first()
-    
+async def get_user_achievements(
+    db: AsyncSession, user_id: uuid.UUID
+) -> List[Achievements]:
+    result = await db.execute(
+        select(Achievements).where(Achievements.user_id == user_id)
+    )
+    return result.scalars().all()
+
+
+async def award_achievement(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    title: str,
+    description: Optional[str] = None,
+    icon: Optional[str] = None,
+) -> Achievements:
+    ex_result = await db.execute(
+        select(Achievements).where(
+            Achievements.user_id == user_id,
+            Achievements.title == title,
+        )
+    )
+    existing = ex_result.scalars().first()
     if existing:
         return existing
-        
+
     achievement = Achievements(
         user_id=user_id,
         title=title,
         description=description,
-        icon=icon
+        icon=icon,
     )
     db.add(achievement)
-    db.commit()
-    db.refresh(achievement)
+    await db.commit()
+    await db.refresh(achievement)
     return achievement
