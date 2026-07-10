@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, date
+from datetime import datetime, timezone, date
 import sqlalchemy
 from sqlalchemy import String, Date, DateTime
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -13,7 +13,7 @@ class WeeklyReports(Base):
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     metrics_summary: Mapped[dict] = mapped_column(JSONB, nullable=True) # E.g., total_screen_time, avg_mood
     ai_summary: Mapped[str] = mapped_column(String(2000), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="weekly_reports")
@@ -24,7 +24,7 @@ class AIInsights(Base):
     insight_type: Mapped[str] = mapped_column(String(50), nullable=False) # E.g., WARNING, PRAISE, TIP
     message: Mapped[str] = mapped_column(String(1000), nullable=False)
     context_data: Mapped[dict] = mapped_column(JSONB, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="ai_insights")

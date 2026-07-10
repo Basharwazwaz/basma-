@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
 from fastapi import HTTPException
@@ -59,7 +60,7 @@ async def enroll_user_in_challenge(
     )
     db.add(new_enrollment)
     await db.commit()
-    await db.refresh(new_enrollment)
+    await db.refresh(new_enrollment, ["challenge"])
     return new_enrollment
 
 
@@ -83,12 +84,53 @@ async def update_user_challenge(
         setattr(db_uchallenge, field, value)
 
     await db.commit()
-    await db.refresh(db_uchallenge)
+    await db.refresh(db_uchallenge, ["challenge"])
     return db_uchallenge
 
 
-# ---------------------------------------------------------------------------
-# Achievements
+async def checkin_user_challenge(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    user_challenge_id: uuid.UUID,
+) -> UserChallenges:
+    """Daily check-in: increment progress_days by 1, enforcing 1 check-in per day."""
+    result = await db.execute(
+        select(UserChallenges).where(
+            UserChallenges.id == user_challenge_id,
+            UserChallenges.user_id == user_id,
+        )
+    )
+    db_uchallenge = result.scalars().first()
+    if not db_uchallenge:
+        raise HTTPException(status_code=404, detail="User challenge not found")
+
+    if db_uchallenge.status != "ACTIVE":
+        raise HTTPException(status_code=400, detail="Challenge is not active")
+
+    now = datetime.now(timezone.utc)
+    if db_uchallenge.last_checkin:
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        last = db_uchallenge.last_checkin
+        if last.tzinfo is None:
+            last = last.replace(tzinfo=timezone.utc)
+        if last >= today_start:
+            raise HTTPException(status_code=400, detail="Already checked in today")
+
+    db_uchallenge.progress_days += 1
+    db_uchallenge.last_checkin = now
+
+    # Auto-complete if progress reaches duration
+    ch_result = await db.execute(
+        select(Challenges).where(Challenges.id == db_uchallenge.challenge_id)
+    )
+    challenge = ch_result.scalars().first()
+    if challenge and db_uchallenge.progress_days >= challenge.duration_days:
+        db_uchallenge.status = "COMPLETED"
+        db_uchallenge.completed_at = now
+
+    await db.commit()
+    await db.refresh(db_uchallenge, ["challenge"])
+    return db_uchallenge
 # ---------------------------------------------------------------------------
 
 async def get_user_achievements(

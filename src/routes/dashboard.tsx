@@ -32,7 +32,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGetTasks, apiCreateTask, apiUpdateTask, apiGetDashboardSummary } from "@/lib/api";
+import { apiGetTasks, apiCreateTask, apiUpdateTask, apiGetDashboardSummary, apiSubmitMood } from "@/lib/api";
 import { Loader2, type LucideIcon } from "lucide-react";
 import type { DashboardSummaryData } from "@/lib/api";
 
@@ -47,31 +47,6 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({ meta: [{ title: "لوحة التحكم | بصمة+" }] }),
   component: Dashboard,
 });
-
-const screen = [
-  { d: "السبت", h: 6.2 },
-  { d: "الأحد", h: 5.4 },
-  { d: "الاثنين", h: 4.8 },
-  { d: "الثلاثاء", h: 5.1 },
-  { d: "الأربعاء", h: 3.9 },
-  { d: "الخميس", h: 4.5 },
-  { d: "الجمعة", h: 4.2 },
-];
-const mood = [
-  { d: "س", v: 6 },
-  { d: "ح", v: 7 },
-  { d: "ن", v: 5 },
-  { d: "ث", v: 8 },
-  { d: "ر", v: 7 },
-  { d: "خ", v: 8 },
-  { d: "ج", v: 9 },
-];
-const scores = [
-  { t: "الصحة الرقمية", v: 82, c: "text-primary", i: Activity, to: "/digital-health" as const },
-  { t: "التعلّم", v: 74, c: "text-info", i: Brain, to: "/learning-hub" as const },
-  { t: "الإنتاجية", v: 68, c: "text-warning", i: TrendingUp, to: "/planner" as const },
-  { t: "الرفاه", v: 79, c: "text-success", i: Heart, to: "/mood" as const },
-];
 
 const ALL_SUGGESTIONS = [
   [
@@ -190,21 +165,30 @@ function Dashboard() {
   const [newTaskTitle, setNewTaskTitle] = useState("");
 
   const [suggIndex, setSuggIndex] = useState(0);
-  const [isRefreshingSugg, setIsRefreshingSugg] = useState(false);
 
   const [moodLogged, setMoodLogged] = useState(false);
+  const moodMutation = useMutation({
+    mutationFn: (payload: { mood_score: number; stress_score: number; mood_state: string }) =>
+      apiSubmitMood({
+        ...payload,
+        record_date: new Date().toISOString().split("T")[0],
+      }),
+    onSuccess: () => {
+      setMoodLogged(true);
+      toast("تم تسجيل المزاج اليوم ✓");
+    },
+    onError: () => {
+      toast.error("فشل تسجيل المزاج. حاول مرة أخرى.");
+    },
+  });
 
   useEffect(() => {
     setGreeting(getGreeting(userName));
 
-    // Check if mood is logged today
-    try {
-      const today = new Date().toDateString();
-      if (localStorage.getItem("basma-mood-date") === today) {
-        setMoodLogged(true);
-      }
-    } catch (err) {
-      console.error("Failed to read from localStorage:", err);
+    const today = new Date().toISOString().split("T")[0];
+    const lastMoodDate = localStorage.getItem("basma-mood-date");
+    if (lastMoodDate === today) {
+      setMoodLogged(true);
     }
   }, [userName]);
 
@@ -232,14 +216,26 @@ function Dashboard() {
   };
 
   const logMood = (label: string, emoji: string) => {
+    const valueMap: Record<string, number> = {
+      "ممتاز": 5,
+      "جيّد": 4,
+      "عادي": 3,
+      "سيّء": 2,
+      "مُرهق": 1,
+    };
+    const moodScore = valueMap[label] ?? 3;
+    moodMutation.mutate({
+      mood_score: moodScore,
+      stress_score: 10 - moodScore,
+      mood_state: label,
+    });
     try {
-      localStorage.setItem("basma-mood-date", new Date().toDateString());
+      localStorage.setItem("basma-mood-date", new Date().toISOString().split("T")[0]);
       localStorage.setItem("basma-mood-last", label);
-    } catch (err) {
-      console.error("Failed to write to localStorage:", err);
+    } catch {
+      // localStorage may be unavailable
     }
-    setMoodLogged(true);
-    toast("تم تسجيل المزاج اليوم ✓", {
+    toast(`تم تسجيل المزاج اليوم ✓`, {
       description: `مزاجك: ${emoji} ${label}`,
       icon: emoji,
     });
@@ -435,7 +431,7 @@ function Dashboard() {
             </div>
           </div>
           <div
-            className={`space-y-3 transition-opacity duration-300 ${isRefreshingSugg ? "opacity-50" : "opacity-100"}`}
+            className={`space-y-3 transition-opacity duration-300`}
           >
             {currentSuggestions.map((s) => (
               <div key={s.t} className="rounded-lg border bg-muted/30 p-3">

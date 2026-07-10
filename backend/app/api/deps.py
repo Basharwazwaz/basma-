@@ -1,4 +1,5 @@
 from typing import AsyncGenerator
+import uuid
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 import jwt
@@ -39,12 +40,21 @@ async def get_current_user(
             detail="Could not validate credentials",
         )
     
+    # Convert to UUID if it's a string
+    try:
+        user_uuid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+    
     # Query user from DB
-    result = await db.execute(select(Users).where(Users.id == user_id))
+    result = await db.execute(select(Users).where(Users.id == user_uuid))
     user = result.scalars().first()
     
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     if not user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
         

@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID
@@ -13,7 +13,7 @@ class Notifications(Base):
     message: Mapped[str] = mapped_column(String(1000), nullable=True)
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
     action_url: Mapped[str] = mapped_column(String(500), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="notifications")

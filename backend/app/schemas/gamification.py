@@ -38,6 +38,7 @@ class UserChallengeResponse(UserChallengeBase):
     user_id: uuid.UUID
     started_at: datetime
     completed_at: Optional[datetime] = None
+    last_checkin: Optional[datetime] = None
     challenge: Optional[ChallengeResponse] = None
 
     class Config:

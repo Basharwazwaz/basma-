@@ -40,11 +40,32 @@ const paths = [
 function Hub() {
   const [activeFilter, setActiveFilter] = useState("الكل");
   const [searchQuery, setSearchQuery] = useState("");
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem("basma_bookmarks");
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
 
   const { data: allItems, isLoading } = useQuery({
     queryKey: ["learning-content"],
     queryFn: () => apiGetLearningContent(),
   });
+
+  const toggleBookmark = (id: string) => {
+    setBookmarkedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      localStorage.setItem("basma_bookmarks", JSON.stringify([...next]));
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     if (!allItems) return [];
@@ -131,8 +152,12 @@ function Hub() {
                       <div className="gradient-warm flex h-10 w-10 items-center justify-center rounded-xl text-primary">
                         <Icon className="h-5 w-5" />
                       </div>
-                      <button className="text-muted-foreground transition hover:text-primary">
-                        <Bookmark className="h-4 w-4" />
+                      <button
+                        className={`transition ${bookmarkedIds.has(i.id) ? "text-primary" : "text-muted-foreground hover:text-primary"}`}
+                        onClick={() => toggleBookmark(i.id)}
+                        title={bookmarkedIds.has(i.id) ? "إزالة من المحفوظات" : "حفظ"}
+                      >
+                        <Bookmark className={`h-4 w-4 ${bookmarkedIds.has(i.id) ? "fill-primary" : ""}`} />
                       </button>
                     </div>
                     <h3 className="font-bold leading-snug">{i.title}</h3>

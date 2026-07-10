@@ -5,6 +5,7 @@ import { Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
   LineChart,
@@ -18,7 +19,8 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { apiGetMoods, apiSubmitMood } from "@/lib/api";
+import { apiGetMoods, apiSubmitMood, apiGetPlanner, apiGetTasks } from "@/lib/api";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/mood")({
@@ -46,6 +48,7 @@ function Mood() {
   const todayLog = moodLogs.find((m) => m.record_date === today);
 
   const [sel, setSel] = useState<number | null>(todayLog?.mood_score || null);
+  const [stressScore, setStressScore] = useState(todayLog?.stress_score ?? 5);
   const [note, setNote] = useState(todayLog?.note || "");
   const [showConfetti, setShowConfetti] = useState(false);
 
@@ -69,13 +72,13 @@ function Mood() {
     submitMoodMutation.mutate({
       record_date: today,
       mood_score: sel,
-      stress_score: 5, // Default for now
+      stress_score: stressScore,
       mood_state: emojiConfig.state,
       note: note.trim() || undefined,
     });
   };
 
-  const isSaved = todayLog?.mood_score === sel && todayLog?.note === note;
+  const isSaved = todayLog?.mood_score === sel && todayLog?.note === note && todayLog?.stress_score === stressScore;
 
   const chartData = useMemo(() => {
     // Reverse so oldest is first (for chart LTR or RTL logic)
@@ -90,16 +93,53 @@ function Mood() {
       .slice(-7); // Last 7 days
   }, [moodLogs]);
 
-  // Dummy correlation data for now, until we fully link study habits
-  const corr = [
-    { d: "س", mood: 6, study: 3 },
-    { d: "ح", mood: 7, study: 4 },
-    { d: "ن", mood: 5, study: 2 },
-    { d: "ث", mood: 8, study: 5 },
-    { d: "ر", mood: 7, study: 4 },
-    { d: "خ", mood: 8, study: 6 },
-    { d: "ج", mood: 9, study: 5 },
-  ];
+  const { data: plannerItems = [] } = useQuery({
+    queryKey: ["planner"],
+    queryFn: () => apiGetPlanner(),
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["tasks"],
+    queryFn: () => apiGetTasks(),
+  });
+
+  // Build study hours per day of week from planner items (start/end time)
+  const corrData = useMemo(() => {
+    const dayNames = ["س", "ح", "ن", "ث", "ر", "خ", "ج"];
+    const studyHours: number[] = new Array(7).fill(0);
+
+    plannerItems.forEach((p) => {
+      if (p.start_time && p.end_time) {
+        const start = new Date(`2000-01-01T${p.start_time}`);
+        const end = new Date(`2000-01-01T${p.end_time}`);
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        if (hours > 0) {
+          const d = new Date(p.plan_date).getDay();
+          const dayIdx = d === 0 ? 6 : d - 1; // Convert: Sun=6, Mon=0, ...
+          studyHours[dayIdx] += hours;
+        }
+      }
+    });
+
+    const sorted = [...moodLogs].sort(
+      (a, b) => new Date(a.record_date).getTime() - new Date(b.record_date).getTime(),
+    );
+
+    // Group mood by day of week (last 7 days)
+    const moodByDay: Record<number, number[]> = {};
+    sorted.slice(-7).forEach((log) => {
+      const dayIdx = new Date(log.record_date).getDay();
+      const idx = dayIdx === 0 ? 6 : dayIdx - 1;
+      if (!moodByDay[idx]) moodByDay[idx] = [];
+      moodByDay[idx].push(log.mood_score);
+    });
+
+    return dayNames.map((d, i) => ({
+      d,
+      mood: moodByDay[i]?.length ? Math.round(moodByDay[i].reduce((a, b) => a + b, 0) / moodByDay[i].length) : 0,
+      study: Math.round(studyHours[i] * 10) / 10,
+    }));
+  }, [moodLogs, plannerItems]);
 
   return (
     <AppShell title="تتبّع المزاج" subtitle="افهم مشاعرك وعلاقتها بعاداتك.">
@@ -124,6 +164,23 @@ function Mood() {
             value={note}
             onChange={(e) => setNote(e.target.value)}
           />
+        </div>
+        <div className="mt-6">
+          <div className="flex items-center justify-between mb-2">
+            <Label className="text-sm font-medium">مستوى التوتر</Label>
+            <span className="text-sm font-bold text-primary">{stressScore}/10</span>
+          </div>
+          <Slider
+            min={1}
+            max={10}
+            step={1}
+            value={[stressScore]}
+            onValueChange={([v]) => setStressScore(v)}
+          />
+          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+            <span>هادئ</span>
+            <span>توتر شديد</span>
+          </div>
         </div>
         <div className="mt-4 relative">
           <Button
@@ -231,10 +288,10 @@ function Mood() {
           </div>
         </Card>
         <Card className="p-5">
-          <h3 className="mb-4 font-bold">المزاج مقابل ساعات الدراسة (قريباً)</h3>
-          <div className="h-64 opacity-50 pointer-events-none">
+          <h3 className="mb-4 font-bold">المزاج مقابل ساعات الدراسة</h3>
+          <div className="h-64">
             <ResponsiveContainer>
-              <BarChart data={corr}>
+              <BarChart data={corrData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis dataKey="d" fontSize={12} />
                 <YAxis fontSize={12} />

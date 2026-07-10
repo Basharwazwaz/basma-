@@ -23,6 +23,7 @@ import {
   FileBarChart,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -196,6 +197,10 @@ function ThemeToggle() {
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user } = useAuth();
+  const displayName = user?.profile?.first_name
+    ? `${user.profile.first_name}${user.profile.last_name ? " " + user.profile.last_name : ""}`
+    : user?.email ?? "بصمة+";
   return (
     <div className="flex h-full flex-col">
       <Link to="/dashboard" className="flex items-center gap-3 px-6 py-6">
@@ -233,10 +238,12 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       <div className="border-t p-4">
         <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
           <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary text-primary-foreground">ب</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {displayName.charAt(0)}
+            </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="truncate text-sm font-semibold">بشّار العلي</div>
+            <div className="truncate text-sm font-semibold">{displayName}</div>
             <div className="truncate text-xs text-muted-foreground">طالب · المستوى ٧</div>
           </div>
         </div>

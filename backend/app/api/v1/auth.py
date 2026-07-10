@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 import httpx
 
@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 
+from app.core.limiter import limiter
 from app.core.config import settings
 from app.core.security import (
     verify_password,
@@ -47,7 +48,7 @@ async def _issue_tokens_for_user(
     db_token = RefreshTokens(
         user_id=user.id,
         token=refresh_token,
-        expires_at=datetime.utcfromtimestamp(decoded["exp"]),
+        expires_at=datetime.fromtimestamp(decoded["exp"], tz=timezone.utc),
     )
     db.add(db_token)
     await db.commit()
@@ -56,7 +57,7 @@ async def _issue_tokens_for_user(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=settings.ENVIRONMENT == "production",
         samesite="lax",
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -67,10 +68,11 @@ async def _issue_tokens_for_user(
 # ---------------------------------------------------------------------------
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, user_in: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Users).where(Users.email == user_in.email))
     if result.scalars().first():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     user = Users(
         email=user_in.email,
@@ -98,13 +100,23 @@ async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
 # ---------------------------------------------------------------------------
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     response: Response,
     db: AsyncSession = Depends(get_db),
     form_data: OAuth2PasswordRequestForm = Depends(),
 ):
     result = await db.execute(select(Users).where(Users.email == form_data.username))
     user = result.scalars().first()
+
+    # Reject OAuth-only users (placeholder password starts with "!")
+    if user and user.hashed_password.startswith("!"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="This account uses Google login. Please sign in with Google.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -136,7 +148,7 @@ async def refresh_access_token(
 
     if not db_token or db_token.is_revoked:
         raise HTTPException(status_code=401, detail="Invalid or revoked refresh token")
-    if db_token.expires_at < datetime.utcnow():
+    if db_token.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
     try:
@@ -181,7 +193,8 @@ async def logout(
 # ---------------------------------------------------------------------------
 
 @router.post("/forgot-password")
-async def forgot_password(data: ForgotPassword, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def forgot_password(request: Request, data: ForgotPassword, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Users).where(Users.email == data.email))
     user = result.scalars().first()
     # Return the same message regardless to prevent email enumeration attacks

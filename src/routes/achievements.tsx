@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import {
   Flame,
   Star,
@@ -25,22 +24,27 @@ export const Route = createFileRoute("/achievements")({
   component: Ach,
 });
 
-const badges = [
-  { t: "أول خطوة", d: "أكمل أول مهمّة.", icon: Star, unlocked: true },
-  { t: "سلسلة ٧ أيام", d: "حافظ على نشاطك أسبوعًا.", icon: Flame, unlocked: true },
-  { t: "قارئ نَهِم", d: "اقرأ ١٠ ساعات.", icon: BookOpen, unlocked: true },
-  { t: "عقل متعطّش", d: "أكمل ٣ كورسات.", icon: Brain, unlocked: true },
-  { t: "بطل النوم", d: "نَم ٧ ساعات لـ ١٤ يوم.", icon: Moon, unlocked: false, p: 60 },
-  { t: "منفصل عن الشاشة", d: "أسبوع بأقل من ٣س شاشة.", icon: Smartphone, unlocked: false, p: 30 },
-  { t: "متوازن", d: "احتفظ بمزاج ٧+ لمدّة ١٤ يوم.", icon: Heart, unlocked: false, p: 50 },
-  { t: "صاعقة", d: "أكمل ٥ تحديّات في يوم.", icon: Zap, unlocked: false, p: 0 },
-];
-const activity = [
-  { t: "أنهيت تحدي «اقرأ ٢٠ دقيقة»", time: "منذ ساعة", pts: 25 },
-  { t: "وصلت للمستوى ٧", time: "أمس", pts: 100 },
-  { t: "حصلت على شارة «قارئ نَهِم»", time: "قبل ٣ أيام", pts: 50 },
-  { t: "أكملت ٥٠ جلسة بومودورو", time: "قبل أسبوع", pts: 200 },
-];
+const iconMap: Record<string, typeof Star> = {
+  "أول خطوة": Star,
+  "سلسلة ٧ أيام": Flame,
+  "قارئ نَهِم": BookOpen,
+  "عقل متعطّش": Brain,
+  "بطل النوم": Moon,
+  "منفصل عن الشاشة": Smartphone,
+  "متوازن": Heart,
+  "صاعقة": Zap,
+  "تحدي": Trophy,
+  "تعلم": Brain,
+  "نشاط": Flame,
+  "نوم": Moon,
+  "قراءة": BookOpen,
+  "صحة": Heart,
+};
+
+function getIcon(title: string, icon?: string | null) {
+  if (icon && iconMap[icon]) return iconMap[icon];
+  return iconMap[title] ?? Trophy;
+}
 
 function Ach() {
   const { data: userProfile, isLoading: isProfileLoading } = useQuery({
@@ -58,14 +62,21 @@ function Ach() {
   const nextLevelPoints = level * 300;
   const progressPercent = ((points % 300) / 300) * 100;
 
-  const earnedTitles = new Set(earnedAchievements.map((a) => a.title));
+  // Build activity feed from earned achievements (most recent first)
+  const activityFeed = [...earnedAchievements]
+    .sort((a, b) => new Date(b.earned_at).getTime() - new Date(a.earned_at).getTime())
+    .slice(0, 10);
 
-  const displayBadges = badges
-    .map((b) => ({
-      ...b,
-      unlocked: earnedTitles.has(b.t) || b.unlocked, // keep initial mocked as true just for visual if needed, but realistically we should just check earnedTitles. Let's make it real.
-    }))
-    .map((b) => ({ ...b, unlocked: earnedTitles.has(b.t) })); // Real version
+  function timeAgo(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    if (hours < 1) return "الآن";
+    if (hours < 24) return `منذ ${hours} ساعة`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return "أمس";
+    if (days < 7) return `قبل ${days} أيام`;
+    return `قبل ${Math.floor(days / 7)} أسبوع`;
+  }
 
   return (
     <AppShell title="الإنجازات" subtitle="احتفل بإنجازاتك واستمر في التقدّم.">
@@ -109,31 +120,30 @@ function Ach() {
           <div className="col-span-full py-10 flex justify-center">
             <Loader2 className="animate-spin text-muted-foreground" />
           </div>
+        ) : earnedAchievements.length === 0 ? (
+          <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
+            لم تحصل على أي شارة بعد. استمر في النشاط!)
+          </div>
         ) : (
-          displayBadges.map((b) => {
-            const Icon = b.icon;
+          earnedAchievements.map((ach) => {
+            const Icon = getIcon(ach.title, ach.icon);
             return (
               <Card
-                key={b.t}
-                className={`p-5 text-center transition-all ${b.unlocked ? "hover:shadow-glow" : "opacity-70"}`}
+                key={ach.id}
+                className="p-5 text-center transition-all hover:shadow-glow"
               >
-                <div
-                  className={`mx-auto flex h-16 w-16 items-center justify-center rounded-2xl ${b.unlocked ? "gradient-primary text-primary-foreground shadow-glow relative overflow-hidden animate-shimmer" : "bg-muted text-muted-foreground"}`}
-                >
-                  {b.unlocked ? <Icon className="h-8 w-8" /> : <Lock className="h-7 w-7" />}
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary text-primary-foreground shadow-glow relative overflow-hidden animate-shimmer">
+                  <Icon className="h-8 w-8" />
                 </div>
-                <h4 className="mt-3 font-bold">{b.t}</h4>
-                <p className="mt-1 text-xs text-muted-foreground">{b.d}</p>
-                {!b.unlocked && typeof b.p === "number" && (
-                  <div className="mt-3">
-                    <Progress value={b.p} className="h-1.5" />
-                    <div className="mt-1 text-xs text-muted-foreground">{b.p}٪</div>
-                  </div>
-                )}
-                {b.unlocked && (
-                  <Badge className="mt-3" variant="secondary">
-                    مفتوحة
-                  </Badge>
+                <h4 className="mt-3 font-bold">{ach.title}</h4>
+                <p className="mt-1 text-xs text-muted-foreground">{ach.description}</p>
+                <Badge className="mt-3" variant="secondary">
+                  مفتوحة
+                </Badge>
+                {ach.earned_at && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {timeAgo(ach.earned_at)}
+                  </p>
                 )}
               </Card>
             );
@@ -144,25 +154,28 @@ function Ach() {
       <Card className="p-5">
         <h3 className="mb-4 text-lg font-bold">آخر الأنشطة</h3>
         <div className="space-y-2">
-          {activity.map((a, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3"
-            >
-              <div className="flex items-center gap-3">
-                <div className="gradient-warm flex h-9 w-9 items-center justify-center rounded-lg text-primary">
-                  <Trophy className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{a.t}</div>
-                  <div className="text-xs text-muted-foreground">{a.time}</div>
+          {activityFeed.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              لا توجد أنشطة بعد.
+            </p>
+          ) : (
+            activityFeed.map((ach) => (
+              <div
+                key={ach.id}
+                className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="gradient-warm flex h-9 w-9 items-center justify-center rounded-lg text-primary">
+                    <Trophy className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">حصلت على شارة "{ach.title}"</div>
+                    <div className="text-xs text-muted-foreground">{timeAgo(ach.earned_at)}</div>
+                  </div>
                 </div>
               </div>
-              <Badge variant="secondary" className="text-success">
-                +{a.pts}
-              </Badge>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </Card>
     </AppShell>

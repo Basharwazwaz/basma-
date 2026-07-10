@@ -26,7 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { usePomodoro, type PomodoroSettings, type SessionType } from "@/hooks/use-pomodoro";
-import { apiGetTasks, apiCreateTask, apiUpdateTask, apiDeleteTask, apiGetPlanner } from "@/lib/api";
+import { apiGetTasks, apiCreateTask, apiUpdateTask, apiDeleteTask, apiGetPlanner, apiGenerateSmartPlan } from "@/lib/api";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
@@ -185,6 +185,17 @@ function Planner() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
   });
 
+  const generatePlanMutation = useMutation({
+    mutationFn: apiGenerateSmartPlan,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["planner"] });
+      toast.success(data.message || "تم إنشاء الخطة الذكية بنجاح!");
+    },
+    onError: () => {
+      toast.error("فشل إنشاء الخطة الذكية");
+    },
+  });
+
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
@@ -205,22 +216,24 @@ function Planner() {
 
   const displaySlots = plannerItems.map((p) => {
     const d = new Date(p.plan_date);
-    let dayIndex = d.getDay() + 1; // getDay() is 0=Sun, we want 0=Sat. So Sun=1. Mon=2. Tue=3. Wed=4. Thu=5. Fri=6. Sat=0.
+    let dayIndex = d.getDay() + 1;
     if (dayIndex === 7) dayIndex = 0;
 
-    // start_time comes like "HH:MM:SS"
     const tStr = p.start_time ? p.start_time.substring(0, 5) : "١٢:٠٠";
     const mappedT =
       toArabicNumerals(parseInt(tStr.split(":")[0])) +
       ":" +
       toArabicNumerals(parseInt(tStr.split(":")[1]));
 
-    return {
-      d: dayIndex,
-      t: mappedT,
-      title: p.title,
-      cat: "study", // default for now
-    };
+    const titleLower = p.title.toLowerCase();
+    let cat = "study";
+    if (titleLower.includes("استراحة") || titleLower.includes("راحة") || titleLower.includes("صحة") || titleLower.includes("تمارين")) cat = "health";
+    else if (titleLower.includes("مراجعة") || titleLower.includes("test") || titleLower.includes("امتحان")) cat = "exam";
+    else if (titleLower.includes("شخصي") || titleLower.includes("family")) cat = "personal";
+    else if (titleLower.includes("مهنة") || titleLower.includes("career")) cat = "career";
+    else if (titleLower.includes("تعلم") || titleLower.includes("learn")) cat = "learn";
+
+    return { d: dayIndex, t: mappedT, title: p.title, cat };
   });
 
   return (
@@ -228,8 +241,17 @@ function Planner() {
       title="المخطط الأسبوعي"
       subtitle="نظّم وقتك بذكاء ووازن بين الدراسة والراحة."
       actions={
-        <Button className="gradient-primary shadow-soft">
-          <Sparkles className="ms-1 h-4 w-4" /> خطّة ذكيّة
+        <Button
+          className="gradient-primary shadow-soft"
+          onClick={() => generatePlanMutation.mutate()}
+          disabled={generatePlanMutation.isPending}
+        >
+          {generatePlanMutation.isPending ? (
+            <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+          ) : (
+            <Sparkles className="ms-1 h-4 w-4" />
+          )}
+          خطّة ذكيّة
         </Button>
       }
     >

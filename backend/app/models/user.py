@@ -1,6 +1,6 @@
 import uuid
 import sqlalchemy
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy import String, Boolean, DateTime, Integer, Text
@@ -23,10 +23,10 @@ class Users(Base):
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # Relationships
@@ -65,6 +65,15 @@ class Users(Base):
     )
     ai_insights: Mapped[list["AIInsights"]] = relationship(
         "AIInsights", back_populates="user", cascade="all, delete-orphan"
+    )
+    refresh_tokens: Mapped[list["RefreshTokens"]] = relationship(
+        "RefreshTokens", back_populates="user", cascade="all, delete-orphan"
+    )
+    coach_messages: Mapped[list["CoachMessages"]] = relationship(
+        "CoachMessages", back_populates="user", cascade="all, delete-orphan"
+    )
+    content_interactions: Mapped[list["UserContentInteraction"]] = relationship(
+        "UserContentInteraction", back_populates="user", cascade="all, delete-orphan"
     )
 
 
@@ -108,10 +117,10 @@ class Profiles(Base):
 
     # ── Timestamps ──────────────────────────────────────────────────────────
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # Relationship

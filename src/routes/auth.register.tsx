@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,21 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api";
 import { toast } from "sonner";
+
+const registerSchema = z.object({
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  email: z.string().email("صيغة البريد الإلكتروني غير صحيحة."),
+  password: z
+    .string()
+    .min(8, "كلمة المرور يجب أن تكون ٨ أحرف على الأقل.")
+    .regex(/[A-Z]/, "يجب أن تحتوي كلمة المرور على حرف كبير على الأقل.")
+    .regex(/[0-9]/, "يجب أن تحتوي كلمة المرور على رقم على الأقل."),
+  gender: z.string().optional(),
+  level: z.string().optional(),
+});
+
+type RegisterForm = z.infer<typeof registerSchema>;
 
 export const Route = createFileRoute("/auth/register")({
   head: () => ({
@@ -33,20 +49,23 @@ function Register() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [_gender, setGender] = useState("");
-  const [_level, setLevel] = useState("");
+  const [gender, setGender] = useState("");
+  const [level, setLevel] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (!email || !password) {
-      setError("البريد الإلكتروني وكلمة المرور مطلوبان.");
-      return;
-    }
-    if (password.length < 8) {
-      setError("كلمة المرور يجب أن تكون ٨ أحرف على الأقل.");
+    const parsed = registerSchema.safeParse({
+      email,
+      password,
+      firstName: firstName || undefined,
+      lastName: lastName || undefined,
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0].message);
       return;
     }
 

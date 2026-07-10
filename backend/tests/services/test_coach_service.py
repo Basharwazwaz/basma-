@@ -22,12 +22,12 @@ async def test_chat_fallback(test_db_session):
     response = await chat_with_coach(test_db_session, user_id, msg)
     
     assert response is not None
-    assert response.role == "model"
-    assert "التواصل مع المطور" in response.content or "مفتاح" in response.content
+    assert response.role == "ai"
+    assert "مفتاح" in response.content or "المطور" in response.content
     
     # Check history
     history = await get_chat_history(test_db_session, user_id)
     assert len(history) == 2
     assert history[0].role == "user"
     assert history[0].content == "مرحبا"
-    assert history[1].role == "model"
+    assert history[1].role == "ai"

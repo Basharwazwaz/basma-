@@ -110,10 +110,13 @@ export async function apiFetch<T = unknown>(
 
 async function _refreshAccessToken(): Promise<boolean> {
   try {
-    const data = await apiFetch<{ access_token: string }>("/auth/refresh", {
+    const response = await fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
-      _retry: true, // prevent recursion
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
     });
+    if (!response.ok) return false;
+    const data: { access_token: string } = await response.json();
     tokenStore.set(data.access_token);
     return true;
   } catch {
@@ -290,6 +293,14 @@ export async function apiUpdateSettings(payload: SettingsPayload): Promise<Profi
     method: "PUT",
     body: payload,
   });
+}
+
+export async function apiDeleteAccount(): Promise<void> {
+  await apiFetch("/profile/", { method: "DELETE" });
+}
+
+export async function apiExportData(): Promise<FullUserData> {
+  return apiFetch<FullUserData>("/profile/");
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -499,6 +510,7 @@ export interface UserChallengeData {
   progress_days: number;
   started_at: string;
   completed_at: string | null;
+  last_checkin: string | null;
   challenge?: ChallengeData;
 }
 
@@ -517,16 +529,33 @@ export async function apiEnrollChallenge(challenge_id: string): Promise<UserChal
   });
 }
 
-export async function apiLogMood(payload: {
-  mood_score: number;
-  stress_score: number;
-  mood_state: string;
-  note?: string;
-}): Promise<MoodData> {
-  return apiFetch<MoodData>("/health/mood", {
-    method: "POST",
+export async function apiUpdateUserChallenge(
+  id: string,
+  payload: Partial<UserChallengeData>,
+): Promise<UserChallengeData> {
+  return apiFetch<UserChallengeData>(`/gamification/challenges/${id}`, {
+    method: "PUT",
     body: payload,
   });
+}
+
+export async function apiCheckinChallenge(id: string): Promise<UserChallengeData> {
+  return apiFetch<UserChallengeData>(`/gamification/challenges/${id}/checkin`, {
+    method: "POST",
+  });
+}
+
+export interface AchievementData {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  icon: string | null;
+  earned_at: string;
+}
+
+export async function apiGetAchievements(): Promise<AchievementData[]> {
+  return apiFetch<AchievementData[]>("/gamification/achievements");
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -543,29 +572,6 @@ export interface DigitalHealthAnalyticsData {
 
 export async function apiGetDigitalHealthAnalytics(days: number = 7): Promise<DigitalHealthAnalyticsData> {
   return apiFetch<DigitalHealthAnalyticsData>(`/health/analytics?days=${days}`);
-}
-
-export async function apiUpdateUserChallenge(
-  id: string,
-  payload: Partial<UserChallengeData>,
-): Promise<UserChallengeData> {
-  return apiFetch<UserChallengeData>(`/gamification/challenges/${id}`, {
-    method: "PUT",
-    body: payload,
-  });
-}
-
-export interface AchievementData {
-  id: string;
-  user_id: string;
-  title: string;
-  description: string | null;
-  icon: string | null;
-  earned_at: string;
-}
-
-export async function apiGetAchievements(): Promise<AchievementData[]> {
-  return apiFetch<AchievementData[]>("/gamification/achievements");
 }
 
 // ──────────────────────────────────────────────────────────────────
@@ -675,5 +681,41 @@ export async function apiClearCoachMessages(): Promise<void> {
   return apiFetch<void>("/coach/messages", {
     method: "DELETE",
   });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// AI helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface PlanEvent {
+  title: string;
+  plan_date: string;
+  start_time: string;
+  end_time: string;
+  event_type: string;
+}
+
+export async function apiGenerateSmartPlan(): Promise<{ events: PlanEvent[]; message: string }> {
+  return apiFetch<{ events: PlanEvent[]; message: string }>("/ai/generate-plan", {
+    method: "POST",
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Weekly Report helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface WeeklyReportData {
+  id: string;
+  user_id: string;
+  start_date: string;
+  end_date: string;
+  metrics_summary: Record<string, unknown> | null;
+  ai_summary: string | null;
+  created_at: string;
+}
+
+export async function apiGetWeeklyReports(): Promise<WeeklyReportData[]> {
+  return apiFetch<WeeklyReportData[]>("/weekly-reports");
 }
 

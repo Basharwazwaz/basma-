@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends
@@ -28,6 +28,30 @@ async def get_moods(
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
+    return await health_service.get_moods(db, current_user.id, start_date, end_date)
+
+
+@router.get("/mood/daily", response_model=List[MoodResponse])
+async def get_mood_daily(
+    days: int = 7,
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Get mood data for the last N days (default 7)."""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days - 1)
+    return await health_service.get_moods(db, current_user.id, start_date, end_date)
+
+
+@router.get("/mood/weekly", response_model=List[MoodResponse])
+async def get_mood_weekly(
+    weeks: int = 4,
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Get mood data for the last N weeks (default 4)."""
+    end_date = date.today()
+    start_date = end_date - timedelta(weeks=weeks)
     return await health_service.get_moods(db, current_user.id, start_date, end_date)
 
 
@@ -64,6 +88,42 @@ async def get_digital_habits(
     return await health_service.get_digital_habits(
         db, current_user.id, start_date, end_date
     )
+
+
+@router.get("/habits/daily", response_model=List[DigitalHabitsResponse])
+async def get_habits_daily(
+    days: int = 7,
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Get digital habits for the last N days (default 7)."""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=days - 1)
+    return await health_service.get_digital_habits(db, current_user.id, start_date, end_date)
+
+
+@router.get("/habits/weekly", response_model=List[DigitalHabitsResponse])
+async def get_habits_weekly(
+    weeks: int = 4,
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Get digital habits for the last N weeks (default 4)."""
+    end_date = date.today()
+    start_date = end_date - timedelta(weeks=weeks)
+    return await health_service.get_digital_habits(db, current_user.id, start_date, end_date)
+
+
+@router.get("/habits/monthly", response_model=List[DigitalHabitsResponse])
+async def get_habits_monthly(
+    months: int = 3,
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Get digital habits for the last N months (default 3)."""
+    end_date = date.today()
+    start_date = end_date - timedelta(days=months * 30)
+    return await health_service.get_digital_habits(db, current_user.id, start_date, end_date)
 
 
 @router.post("/habits", response_model=DigitalHabitsResponse)

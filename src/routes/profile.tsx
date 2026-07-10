@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -20,13 +20,16 @@ import {
 } from "@/components/ui/select";
 import { X, Loader2 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
-import { useAuth, PROFILE_QUERY_KEY } from "@/hooks/use-auth";
 import {
   apiUpdateProfile,
   apiUpdateSettings,
+  apiDeleteAccount,
+  apiExportData,
   type ProfileUpdatePayload,
   type SettingsPayload,
 } from "@/lib/api";
+import { useAuth, PROFILE_QUERY_KEY } from "@/hooks/use-auth";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/profile")({
@@ -72,6 +75,7 @@ function Profile() {
   const { isDark, toggle: toggleTheme } = useTheme();
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // ── Derive initial form state from server data ─────────────────
   const profile = user?.profile;
@@ -85,6 +89,8 @@ function Profile() {
   const [age, setAge] = useState(profile?.age?.toString() ?? "");
   const [interests, setInterests] = useState<string[]>(profile?.interests ?? []);
   const [notifications, setNotifications] = useState(profile?.notifications_enabled ?? true);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync form when data arrives from server
   if (profile && !firstName && profile.first_name) setFirstName(profile.first_name);
@@ -109,6 +115,35 @@ function Profile() {
     mutationFn: (payload: SettingsPayload) => apiUpdateSettings(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: apiDeleteAccount,
+    onSuccess: () => {
+      queryClient.clear();
+      toast.success("تم حذف الحساب بنجاح");
+      navigate({ to: "/" });
+    },
+    onError: () => {
+      toast.error("فشل حذف الحساب. حاول مرة أخرى.");
+    },
+  });
+
+  const exportDataMutation = useMutation({
+    mutationFn: apiExportData,
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `basma-profile-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("تم تصدير البيانات بنجاح");
+    },
+    onError: () => {
+      toast.error("فشل تصدير البيانات.");
     },
   });
 
@@ -148,18 +183,46 @@ function Profile() {
         {/* ── Left / main card ─────────────────────────────────── */}
         <Card className="p-6 lg:col-span-2">
           <div className="mb-6 flex items-center gap-4">
-            <Avatar className="h-20 w-20">
-              <AvatarFallback className="gradient-primary text-2xl text-primary-foreground">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative">
+              <Avatar className="h-20 w-20">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt="الصورة الشخصية" className="h-full w-full rounded-full object-cover" />
+                ) : null}
+                <AvatarFallback className="gradient-primary text-2xl text-primary-foreground">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 2 * 1024 * 1024) {
+                      toast.error("الصورة يجب أن تكون أقل من 2 ميغابايت");
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => setAvatarPreview(reader.result as string);
+                    reader.readAsDataURL(file);
+                  }
+                }}
+              />
+            </div>
             <div>
               <h2 className="text-xl font-bold">{fullName || user?.email}</h2>
               <p className="text-sm text-muted-foreground">
                 {major ? `${major} · ` : ""}
                 {profile?.points ?? 0} نقطة
               </p>
-              <Button variant="outline" size="sm" className="mt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={() => fileInputRef.current?.click()}
+              >
                 تغيير الصورة
               </Button>
             </div>
@@ -318,10 +381,30 @@ function Profile() {
               يمكنك تصدير بياناتك أو حذف حسابك في أي وقت.
             </p>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => exportDataMutation.mutate()}
+                disabled={exportDataMutation.isPending}
+              >
+                {exportDataMutation.isPending ? (
+                  <Loader2 className="ms-1 h-3 w-3 animate-spin" />
+                ) : null}
                 تصدير البيانات
               </Button>
-              <Button variant="destructive" size="sm">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  if (window.confirm("هل أنت متأكد من حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه.")) {
+                    deleteAccountMutation.mutate();
+                  }
+                }}
+                disabled={deleteAccountMutation.isPending}
+              >
+                {deleteAccountMutation.isPending ? (
+                  <Loader2 className="ms-1 h-3 w-3 animate-spin" />
+                ) : null}
                 حذف الحساب
               </Button>
             </div>

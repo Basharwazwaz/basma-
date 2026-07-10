@@ -10,10 +10,6 @@ class TokenPayload(BaseModel):
     exp: int | None = None
     type: str | None = None
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
-
 class ForgotPassword(BaseModel):
     email: EmailStr
 

@@ -2,7 +2,7 @@ import uuid
 from datetime import date
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -24,11 +24,13 @@ router = APIRouter()
 
 @router.get("/goals", response_model=List[GoalResponse])
 async def get_goals(
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Max records to return"),
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
     """Retrieve all goals for the current user."""
-    return await productivity_service.get_goals(db, current_user.id)
+    return await productivity_service.get_goals(db, current_user.id, skip=skip, limit=limit)
 
 
 @router.post("/goals", response_model=GoalResponse)
@@ -71,11 +73,13 @@ async def delete_goal(
 async def get_tasks(
     goal_id: Optional[uuid.UUID] = None,
     due_date: Optional[date] = None,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Max records to return"),
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
     """Retrieve tasks. Can be filtered by goal_id or due_date."""
-    return await productivity_service.get_tasks(db, current_user.id, goal_id, due_date)
+    return await productivity_service.get_tasks(db, current_user.id, goal_id, due_date, skip=skip, limit=limit)
 
 
 @router.post("/tasks", response_model=TaskResponse)
@@ -117,11 +121,13 @@ async def delete_task(
 @router.get("/planner", response_model=List[PlannerResponse])
 async def get_planner_items(
     plan_date: Optional[date] = None,
+    skip: int = Query(0, ge=0, description="Number of records to skip"),
+    limit: int = Query(50, ge=1, le=100, description="Max records to return"),
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
     """Retrieve planner schedule items. Can be filtered by date."""
-    return await productivity_service.get_planner_items(db, current_user.id, plan_date)
+    return await productivity_service.get_planner_items(db, current_user.id, plan_date, skip=skip, limit=limit)
 
 
 @router.post("/planner", response_model=PlannerResponse)

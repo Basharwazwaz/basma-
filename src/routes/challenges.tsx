@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Search, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiGetAllChallenges, apiGetUserChallenges, apiEnrollChallenge } from "@/lib/api";
+import { apiGetAllChallenges, apiGetUserChallenges, apiEnrollChallenge, apiCheckinChallenge } from "@/lib/api";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/challenges")({
@@ -111,6 +111,24 @@ function Challenges() {
     },
   });
 
+  const checkinMutation = useMutation({
+    mutationFn: apiCheckinChallenge,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["user_challenges"] });
+      if (data.status === "COMPLETED") {
+        toast.success("تهانينا! أكملت التحدي 🎉");
+      } else {
+        toast.success("تم تسجيل حضور اليوم ✓");
+      }
+    },
+    onError: (err: any) => {
+      const msg = err?.message?.includes("Already checked in")
+        ? "تم تسجيل الحضور اليوم مسبقاً"
+        : "حدث خطأ أثناء التسجيل.";
+      toast.error(msg);
+    },
+  });
+
   // Filter out challenges user is already enrolled in
   const enrolledIds = new Set(userChallenges.map((uc) => uc.challenge_id));
   const availableChallenges = allChallenges.filter((c) => !enrolledIds.has(c.id));
@@ -157,6 +175,20 @@ function Challenges() {
                       </span>
                       <span>{progressPct}٪</span>
                     </div>
+                    {a.status === "ACTIVE" && (
+                      <Button
+                        size="sm"
+                        className="mt-3 w-full gradient-primary shadow-soft"
+                        onClick={() => checkinMutation.mutate(a.id)}
+                        disabled={checkinMutation.isPending}
+                      >
+                        {checkinMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "✓ سجّل حضور اليوم"
+                        )}
+                      </Button>
+                    )}
                   </div>
                 );
               })}

@@ -1,4 +1,5 @@
 import uuid
+import logging
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -7,6 +8,8 @@ from sqlalchemy import delete
 from app.models.coach import CoachMessages
 from app.schemas.coach import MessageCreate
 from app.core.config import settings
+
+logger = logging.getLogger("basma_api.coach")
 
 # Attempt to import google-genai
 try:
@@ -101,8 +104,7 @@ async def chat_with_coach(db: AsyncSession, user_id: uuid.UUID, message_in: Mess
             ai_response_text = response.text if response.text else "لم أستطع فهم ذلك. هل يمكنك إعادة الصياغة؟"
             
         except Exception as e:
-            # Fallback on error
-            print(f"Gemini API Error: {e}")
+            logger.error("Gemini API Error: %s", e)
             ai_response_text = "عذراً، حدث خطأ أثناء معالجة طلبك عبر الذكاء الاصطناعي. المرجو المحاولة لاحقاً."
 
     # 4. Save AI message

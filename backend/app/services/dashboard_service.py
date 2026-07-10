@@ -1,17 +1,19 @@
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.health import Mood, DigitalHabits
+from app.models.productivity import Goals, Tasks
+from app.models.gamification import UserChallenges
 from app.schemas.dashboard import DashboardSummaryResponse
 
 
 async def get_dashboard_summary(
     db: AsyncSession, user_id: uuid.UUID
 ) -> DashboardSummaryResponse:
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     seven_days_ago = today - timedelta(days=6)
 
     # ── 1. Mood for last 7 days ───────────────────────────────────────────
@@ -71,60 +73,95 @@ async def get_dashboard_summary(
         round(total_screen / count_screen, 1) if count_screen > 0 else 4.8
     )
 
-    # ── 3. Scores (computed from real data) ──────────────────────────────
+    # ── 3. Dynamic scores from real data ──────────────────────────────────
     avg_mood = (
         round(sum(mood_dict.values()) / len(mood_dict) * 10, 0)
         if mood_dict
-        else 79
+        else 50
     )
+
+    # Digital health score: based on screen time
+    digital_health_score = max(0, min(100, int(100 - (screen_time_avg - 4) * 10)))
+
+    # Learning score: based on content engagement (default neutral if no data)
+    learning_score = 50
+
+    # Productivity score: based on completed tasks vs total tasks
+    tasks_result = await db.execute(
+        select(Tasks).where(Tasks.user_id == user_id)
+    )
+    all_tasks = tasks_result.scalars().all()
+    if all_tasks:
+        completed = sum(1 for t in all_tasks if t.is_completed)
+        productivity_score = max(0, min(100, int((completed / len(all_tasks)) * 100)))
+    else:
+        productivity_score = 50
+
+    # Wellbeing score: from mood data
+    wellbeing_score = int(max(0, min(100, avg_mood)))
+
     scores = [
-        {
-            "t": "الصحة الرقمية",
-            "v": max(0, min(100, int(100 - (screen_time_avg - 4) * 10))),
-            "c": "text-primary",
-            "i": "Activity",
-            "to": "/digital-health",
-        },
-        {"t": "التعلّم", "v": 74, "c": "text-info", "i": "Brain", "to": "/learning-hub"},
-        {
-            "t": "الإنتاجية",
-            "v": 68,
-            "c": "text-warning",
-            "i": "TrendingUp",
-            "to": "/planner",
-        },
-        {
-            "t": "الرفاه",
-            "v": int(avg_mood),
-            "c": "text-success",
-            "i": "Heart",
-            "to": "/mood",
-        },
+        {"t": "الصحة الرقمية", "v": digital_health_score, "c": "text-primary", "i": "Activity", "to": "/digital-health"},
+        {"t": "التعلّم", "v": learning_score, "c": "text-info", "i": "Brain", "to": "/learning-hub"},
+        {"t": "الإنتاجية", "v": productivity_score, "c": "text-warning", "i": "TrendingUp", "to": "/planner"},
+        {"t": "الرفاه", "v": wellbeing_score, "c": "text-success", "i": "Heart", "to": "/mood"},
     ]
 
-    # ── 4. Smart suggestions ──────────────────────────────────────────────
-    suggestions = [
-        {
-            "t": "جلسة تركيز قصيرة",
-            "d": "لم تكمل أي جلسة بومودورو اليوم. ابدأ الآن لمدة ٢٥ دقيقة.",
-            "a": "ابدأ الجلسة",
-        },
-        {
+    # ── 4. Dynamic suggestions based on user data ──────────────────────────
+    suggestions = []
+
+    if screen_time_avg > 5:
+        suggestions.append({
+            "t": "خذ استراحة من الشاشة",
+            "d": f"متوسط وقت شاشتك {screen_time_avg} ساعة يوميًا. جرّب تمشية ١٠ دقائق.",
+            "a": "انصح بالتقليص",
+        })
+
+    # Check for active challenges
+    challenges_result = await db.execute(
+        select(UserChallenges).where(
+            UserChallenges.user_id == user_id,
+            UserChallenges.status == "ACTIVE",
+        )
+    )
+    active_challenges = challenges_result.scalars().all()
+    if not active_challenges:
+        suggestions.append({
+            "t": "انضمّ لتحدي جديد",
+            "d": "ليس لديك أي تحدٍّ نشط. تحدّيات تساعدك على بناء عادات إيجابية.",
+            "a": "تصفح التحديات",
+        })
+
+    if not all_tasks or all(t.is_completed for t in all_tasks):
+        suggestions.append({
+            "t": "أضف مهام جديدة",
+            "d": "أكملت كل مهامك! أضف مهام جديدة لتبقى منظّمًا.",
+            "a": "أضف مهمة",
+        })
+
+    if avg_mood < 40:
+        suggestions.append({
             "t": "استرخاء وتأمل",
-            "d": "خصص ١٥ دقيقة للتأمل لرفع مستوى الرفاهية.",
+            "d": "مستوى مزاجك منخفض. خصص ١٥ دقيقة للتأمل لرفع مستوى الرفاهية.",
             "a": "افتح التأمل",
-        },
-        {
-            "t": "راجع أهدافك",
-            "d": "لديك هدف لم تقم بتحديثه منذ يومين.",
-            "a": "تحديث الأهداف",
-        },
+        })
+
+    # Pad to at least 3 suggestions
+    default_suggestions = [
+        {"t": "جلسة تركيز قصيرة", "d": "ابدأ جلسة بومودورو لمدة ٢٥ دقيقة لتحسين إنتاجيتك.", "a": "ابدأ الجلسة"},
+        {"t": "راجع أهدافك", "d": "تأكد أن أهدافك محدّثة ومتوافقة مع خطتك.", "a": "تحديث الأهداف"},
+        {"t": "مقال مقترح", "d": "اقرأ مقالًا تعليميًا جديدًا لتطوير مهاراتك.", "a": "اقرأ المقال"},
     ]
+    for s in default_suggestions:
+        if len(suggestions) >= 3:
+            break
+        if not any(existing["t"] == s["t"] for existing in suggestions):
+            suggestions.append(s)
 
     return DashboardSummaryResponse(
         scores=scores,
         screen_time=screen_time_chart,
         screen_time_avg=screen_time_avg,
         mood_chart=mood_chart,
-        suggestions=suggestions,
+        suggestions=suggestions[:3],
     )

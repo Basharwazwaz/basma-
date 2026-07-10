@@ -1,5 +1,5 @@
 import uuid
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 from fastapi import HTTPException
@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.health import Mood, DigitalHabits
-from app.schemas.health import MoodCreate, MoodUpdate, DigitalHabitsCreate, DigitalHabitsUpdate
+from app.schemas.health import MoodCreate, MoodUpdate, DigitalHabitsCreate, DigitalHabitsUpdate, DigitalHealthAnalyticsResponse
 
 
 # ---------------------------------------------------------------------------
@@ -121,13 +121,11 @@ async def create_or_update_digital_habits(
 # ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
-from datetime import timedelta
-from app.schemas.health import DigitalHealthAnalyticsResponse
 
 async def get_digital_health_analytics(
     db: AsyncSession, user_id: uuid.UUID, days: int
 ) -> DigitalHealthAnalyticsResponse:
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     start_date = today - timedelta(days=days - 1)
     
     # We fetch for previous period too to calculate trend

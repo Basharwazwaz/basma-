@@ -63,6 +63,18 @@ async def update_challenge_progress(
     )
 
 
+@router.post("/challenges/{user_challenge_id}/checkin", response_model=UserChallengeResponse)
+async def checkin_challenge(
+    user_challenge_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Daily check-in for an enrolled challenge. Increments progress by 1."""
+    return await gamification_service.checkin_user_challenge(
+        db, current_user.id, user_challenge_id
+    )
+
+
 # ---------------------------------------------------------------------------
 # Achievements
 # ---------------------------------------------------------------------------

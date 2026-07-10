@@ -110,10 +110,52 @@ function Coach() {
     toast.success("تم نسخ النص");
   };
 
+  const recognitionRef = useRef<any>(null);
+
+  const startRecording = () => {
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("متصفحك لا يدعم التعرّف على الصوت.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ar-SA";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event: any) => {
+      const transcript = Array.from(event.results)
+        .map((r: any) => r[0].transcript)
+        .join("");
+      setInput(transcript);
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+      toast.error("حدث خطأ أثناء التسجيل.");
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+    toast("جاري الاستماع...", { icon: "🎙️" });
+  };
+
+  const stopRecording = () => {
+    recognitionRef.current?.stop();
+    setIsRecording(false);
+  };
+
   const toggleRecording = () => {
-    setIsRecording(!isRecording);
-    if (!isRecording) {
-      toast("جاري التسجيل...", { icon: "🎙️" });
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 

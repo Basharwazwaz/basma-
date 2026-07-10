@@ -165,3 +165,24 @@ async def update_user_me(
     # Return refreshed user + profile
     user = await profile_service.get_full_profile(db, current_user.id)
     return user
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DELETE /profile  (account deletion)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@router.delete(
+    "/",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete current user account",
+    description=(
+        "Soft-deactivates the user account (sets is_active=False). "
+        "User data is retained for audit purposes. This action is irreversible."
+    ),
+)
+async def delete_account(
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    current_user.is_active = False
+    await db.commit()

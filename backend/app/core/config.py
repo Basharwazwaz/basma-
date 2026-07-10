@@ -1,10 +1,13 @@
 import logging
 import json
+import secrets
 from typing import List, Union, Optional
 
-from pydantic import PostgresDsn, computed_field, field_validator
+from pydantic import PostgresDsn, computed_field, field_validator, model_validator
 from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_DEFAULT_SECRET = "super_secret_key_change_in_production"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Basma+ API"
@@ -46,7 +49,7 @@ class Settings(BaseSettings):
         )
 
     # JWT Settings
-    SECRET_KEY: str = "super_secret_key_change_in_production"
+    SECRET_KEY: str = _DEFAULT_SECRET
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -60,6 +63,27 @@ class Settings(BaseSettings):
     # AI Settings
     GEMINI_API_KEY: str = ""
 
+    # Mail Settings (optional)
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_FROM: str = "noreply@basmaplus.com"
+    MAIL_PORT: int = 587
+    MAIL_SERVER: str = "smtp.dummy.com"
+
+    @model_validator(mode="after")
+    def _warn_default_secret(self):
+        if self.SECRET_KEY == _DEFAULT_SECRET:
+            if self.ENVIRONMENT == "production":
+                raise ValueError(
+                    "SECRET_KEY must be changed from the default in production. "
+                    "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
+                )
+            import logging
+            logging.getLogger("basma_api").warning(
+                "Using default SECRET_KEY in development — "
+                "set SECRET_KEY in .env for production."
+            )
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -22,8 +22,9 @@ export const Route = createFileRoute("/auth/login")({
 
 function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => localStorage.getItem("basma_remember_email") ?? "");
   const [password, setPassword] = useState("");
+  const [remember, setRemember] = useState(() => !!localStorage.getItem("basma_remember_email"));
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,6 +38,11 @@ function Login() {
 
     try {
       await login.mutateAsync({ email, password });
+      if (remember) {
+        localStorage.setItem("basma_remember_email", email);
+      } else {
+        localStorage.removeItem("basma_remember_email");
+      }
       // Navigation is handled inside useAuth on success
     } catch (err) {
       if (err instanceof ApiError) {
@@ -100,9 +106,9 @@ function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="login-pass">كلمة المرور</Label>
-                <a href="#" className="text-xs text-primary hover:underline">
+                <Link to="/auth/forgot-password" className="text-xs text-primary hover:underline">
                   نسيت كلمة المرور؟
-                </a>
+                </Link>
               </div>
               <Input
                 id="login-pass"
@@ -115,7 +121,7 @@ function Login() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox id="remember" />
+              <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
               <Label htmlFor="remember" className="text-sm font-normal">
                 تذكّرني
               </Label>

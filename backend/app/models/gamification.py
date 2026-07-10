@@ -1,15 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 import sqlalchemy
 from sqlalchemy import String, Boolean, DateTime
 from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base_class import Base
-
-class ChallengeStatusEnum(str, PG_ENUM):
-    ACTIVE = "ACTIVE"
-    COMPLETED = "COMPLETED"
-    FAILED = "FAILED"
 
 class Challenges(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
@@ -18,7 +13,7 @@ class Challenges(Base):
     category: Mapped[str] = mapped_column(String(50), nullable=True)
     duration_days: Mapped[int] = mapped_column(sqlalchemy.Integer, default=7)
     points_reward: Mapped[int] = mapped_column(sqlalchemy.Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user_challenges: Mapped[list["UserChallenges"]] = relationship("UserChallenges", back_populates="challenge")
@@ -29,7 +24,8 @@ class UserChallenges(Base):
     challenge_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sqlalchemy.ForeignKey("challenges.id", ondelete="CASCADE"), index=True)
     status: Mapped[str] = mapped_column(PG_ENUM("ACTIVE", "COMPLETED", "FAILED", name="challenge_status_enum", create_type=False), default="ACTIVE")
     progress_days: Mapped[int] = mapped_column(sqlalchemy.Integer, default=0)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    last_checkin: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationships
@@ -42,7 +38,7 @@ class Achievements(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=True)
     icon: Mapped[str] = mapped_column(String(50), nullable=True)
-    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    earned_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="achievements")
