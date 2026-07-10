@@ -40,6 +40,5 @@ npm-debug.log*
 # Docker
 .docker/
 
-# Lovable
-.lovable/
+# Wrangler
 .wrangler/

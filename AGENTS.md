@@ -1,12 +1,11 @@
-<!-- LOVABLE:BEGIN -->
+# Basma+ Development Guidelines
 
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
+## Project Structure
+- `src/` — React frontend (TanStack Router, TanStack Query, Tailwind CSS)
+- `backend/` — FastAPI backend (Python, SQLAlchemy, Alembic)
+- `e2e/` — Playwright E2E tests
 
-<!-- LOVABLE:END -->
+## Code Style
+- Frontend: TypeScript, functional components, Arabic RTL
+- Backend: Python 3.11+, SQLAlchemy ORM, Pydantic schemas
+- Follow existing patterns in neighboring files
