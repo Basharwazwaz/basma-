@@ -45,16 +45,16 @@ function Login() {
       }
       // Navigation is handled inside useAuth on success
     } catch (err) {
+      let msg: string;
       if (err instanceof ApiError) {
-        if (err.status === 401) {
-          setError("البريد الإلكتروني أو كلمة المرور غير صحيحة.");
-        } else {
-          setError(err.message);
-        }
+        msg = err.status === 401
+          ? "البريد الإلكتروني أو كلمة المرور غير صحيحة."
+          : err.message;
       } else {
-        setError("حدث خطأ غير متوقع. حاول مرة أخرى.");
+        msg = "حدث خطأ غير متوقع. حاول مرة أخرى.";
       }
-      toast.error("فشل تسجيل الدخول", { description: error ?? undefined });
+      setError(msg);
+      toast.error("فشل تسجيل الدخول", { description: msg });
     }
   };
 

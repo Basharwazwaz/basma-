@@ -6,11 +6,22 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  redirect,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { Toaster } from "sonner";
 
 import appCss from "../styles.css?url";
+import { tokenStore } from "@/lib/api";
+
+const PUBLIC_ROUTES = new Set([
+  "/",
+  "/auth/login",
+  "/auth/register",
+  "/auth/forgot-password",
+  "/auth/reset-password",
+  "/auth/callback",
+]);
 
 function NotFoundComponent() {
   return (
@@ -70,6 +81,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  beforeLoad: ({ location }) => {
+    if (PUBLIC_ROUTES.has(location.pathname)) return;
+    if (!tokenStore.get()) {
+      throw redirect({ to: "/auth/login" });
+    }
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },

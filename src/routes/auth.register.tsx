@@ -82,7 +82,7 @@ function Register() {
       // Navigation to /auth/login is handled inside useAuth on success
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 400) {
+        if (err.status === 409) {
           setError("هذا البريد الإلكتروني مسجّل بالفعل. جرّب تسجيل الدخول.");
         } else {
           setError(err.message);

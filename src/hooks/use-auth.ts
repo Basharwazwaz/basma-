@@ -57,8 +57,24 @@ export function useAuth() {
     mutationFn: (payload: LoginPayload) => apiLogin(payload),
     onSuccess: async () => {
       // Refetch the profile so `user` becomes populated
-      await queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
-      navigate({ to: "/dashboard" });
+      const profile = await queryClient.fetchQuery<FullUserData | null>({
+        queryKey: PROFILE_QUERY_KEY,
+        queryFn: async () => {
+          try {
+            return await apiGetProfile();
+          } catch {
+            return null;
+          }
+        },
+        staleTime: 0,
+      });
+
+      // Check if onboarding is needed (no age = not completed)
+      if (profile?.profile && !profile.profile.age) {
+        navigate({ to: "/onboarding" });
+      } else {
+        navigate({ to: "/dashboard" });
+      }
     },
   });
 
