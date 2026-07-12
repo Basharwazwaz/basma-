@@ -9,6 +9,7 @@
  *  - `logout()`     — clears token + query cache + navigates to /
  */
 
+import { useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -51,6 +52,17 @@ export function useAuth() {
     staleTime: 1000 * 60 * 5, // 5 min
     retry: false,
   });
+
+  // Refetch profile when user returns to the tab — detects JWT expiry.
+  useEffect(() => {
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && tokenStore.get()) {
+        queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [queryClient]);
 
   // ── Login ─────────────────────────────────────────────────────
   const loginMutation = useMutation({

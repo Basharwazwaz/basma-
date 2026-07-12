@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
 
+const _raf = typeof window !== "undefined" ? window.requestAnimationFrame.bind(window) : (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number;
+const _caf = typeof window !== "undefined" && window.cancelAnimationFrame
+  ? window.cancelAnimationFrame.bind(window)
+  : (id: number) => clearTimeout(id);
+
 export function useCountUp(endValue: number, duration: number = 1000) {
   const [count, setCount] = useState(0);
 
@@ -13,13 +18,13 @@ export function useCountUp(endValue: number, duration: number = 1000) {
       const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       setCount(Math.floor(easeProgress * endValue));
       if (progress < 1) {
-        frameId = window.requestAnimationFrame(step);
+        frameId = _raf(step);
       } else {
         setCount(endValue);
       }
     };
-    frameId = window.requestAnimationFrame(step);
-    return () => window.cancelAnimationFrame(frameId);
+    frameId = _raf(step);
+    return () => _caf(frameId);
   }, [endValue, duration]);
 
   return count;
