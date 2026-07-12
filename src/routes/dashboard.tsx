@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -128,6 +128,7 @@ function ScoreCard({ s }: { s: DashboardSummaryData["scores"][0] }) {
 function Dashboard() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const userName = user?.profile?.first_name ?? "يا صديقي";
   const [greeting, setGreeting] = useState(`أهلاً بك، ${userName}`);
 
@@ -441,6 +442,15 @@ function Dashboard() {
                   size="sm"
                   variant="ghost"
                   className="mt-2 -mb-1 px-2 text-primary hover:bg-primary/10"
+                  onClick={() => {
+                    if (s.a.includes("المخطط")) navigate({ to: "/planner" });
+                    else if (s.a.includes("التحدي")) navigate({ to: "/challenges" });
+                    else if (s.a.includes("الكورس") || s.a.includes("المقال")) navigate({ to: "/learning-hub" });
+                    else if (s.a.includes("الجلسة")) navigate({ to: "/planner" });
+                    else if (s.a.includes("الأهداف")) navigate({ to: "/goals" });
+                    else if (s.a.includes("التأمل")) navigate({ to: "/mood" });
+                    else navigate({ to: "/dashboard" });
+                  }}
                 >
                   {s.a} <ArrowLeft className="me-1 h-3.5 w-3.5" />
                 </Button>

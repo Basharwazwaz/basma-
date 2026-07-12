@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -15,11 +16,13 @@ def create_app() -> FastAPI:
     """
     Factory function to create the FastAPI application.
     """
+    is_production = settings.ENVIRONMENT == "production"
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
-        openapi_url=f"{settings.API_V1_STR}/openapi.json",
-        docs_url=f"{settings.API_V1_STR}/docs",
-        redoc_url=f"{settings.API_V1_STR}/redoc",
+        openapi_url=f"{settings.API_V1_STR}/openapi.json" if not is_production else None,
+        docs_url=f"{settings.API_V1_STR}/docs" if not is_production else None,
+        redoc_url=f"{settings.API_V1_STR}/redoc" if not is_production else None,
     )
 
     # Rate limiter state + middleware
@@ -31,8 +34,8 @@ def create_app() -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.BACKEND_CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "Accept"],
         max_age=3600,
     )
 
@@ -48,14 +51,13 @@ def create_app() -> FastAPI:
     @app.get("/")
     def root():
         """Root endpoint that redirects to docs."""
-        return {"message": "Welcome to the Basma+ API. Visit /api/v1/docs for documentation."}
+        return {"message": "Welcome to the Basma+ API."}
 
     logger.info("FastAPI application created and configured.")
     return app
 
 
 async def _rate_limit_handler(request, exc):
-    from fastapi.responses import JSONResponse
     return JSONResponse(
         status_code=429,
         content={"detail": "Too many requests. Please try again later."},

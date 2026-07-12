@@ -1,7 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.api import deps
+from app.core.limiter import limiter
 from app.schemas.coach import MessageCreate, MessageResponse
 from app.services import coach_service
 from app.models.user import Users
@@ -21,7 +22,9 @@ async def get_messages(
 
 
 @router.post("/chat", response_model=MessageResponse)
+@limiter.limit("30/hour")
 async def chat_with_coach(
+    request: Request,
     message_in: MessageCreate,
     db: AsyncSession = Depends(deps.get_db),
     current_user: Users = Depends(deps.get_current_user),

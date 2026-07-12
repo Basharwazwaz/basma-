@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -93,11 +93,15 @@ function Profile() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync form when data arrives from server
-  if (profile && !firstName && profile.first_name) setFirstName(profile.first_name);
-  if (profile && !lastName && profile.last_name) setLastName(profile.last_name);
-  if (profile && !city && profile.city) setCity(profile.city);
-  if (profile && !major && profile.major) setMajor(profile.major);
-  if (profile && !age && profile.age) setAge(String(profile.age));
+  useEffect(() => {
+    if (profile) {
+      if (profile.first_name) setFirstName(profile.first_name);
+      if (profile.last_name) setLastName(profile.last_name);
+      if (profile.city) setCity(profile.city);
+      if (profile.major) setMajor(profile.major);
+      if (profile.age) setAge(String(profile.age));
+    }
+  }, [profile]);
 
   // ── Mutations ──────────────────────────────────────────────────
   const updateProfileMutation = useMutation({

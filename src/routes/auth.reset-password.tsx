@@ -52,8 +52,16 @@ function ResetPassword() {
       setError("يرجى إدخال كلمة المرور الجديدة.");
       return;
     }
-    if (password.length < 6) {
-      setError("كلمة المرور يجب أن تكون 6 أحرف على الأقل.");
+    if (password.length < 8) {
+      setError("كلمة المرور يجب أن تكون ٨ أحرف على الأقل.");
+      return;
+    }
+    if (!/[A-Z]/.test(password)) {
+      setError("يجب أن تحتوي كلمة المرور على حرف كبير على الأقل.");
+      return;
+    }
+    if (!/[0-9]/.test(password)) {
+      setError("يجب أن تحتوي كلمة المرور على رقم على الأقل.");
       return;
     }
     if (password !== confirm) {

@@ -17,6 +17,7 @@ from sqlalchemy.future import select
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models.user import Users
+from app.models.auth import RefreshTokens
 from app.schemas.profile import (
     FullUserResponse,
     OnboardingPayload,
@@ -185,4 +186,10 @@ async def delete_account(
     current_user: Users = Depends(get_current_user),
 ):
     current_user.is_active = False
+    # Revoke all refresh tokens to prevent further use
+    tokens_result = await db.execute(
+        select(RefreshTokens).where(RefreshTokens.user_id == current_user.id)
+    )
+    for token in tokens_result.scalars().all():
+        token.is_revoked = True
     await db.commit()

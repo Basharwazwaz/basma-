@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ export const Route = createFileRoute("/digital-health")({
 
 function DH() {
   const [days, setDays] = useState(7);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["digital-health", days],
@@ -198,7 +199,7 @@ function DH() {
                       <span className="text-sm font-semibold">{a.value}٪</span>
                     </div>
                   ))}
-                  <Button variant="outline" className="mt-2 w-full">
+                  <Button variant="outline" className="mt-2 w-full" onClick={() => queryClient.invalidateQueries({ queryKey: ["digital-health"] })}>
                     تحديث البيانات
                   </Button>
                 </div>

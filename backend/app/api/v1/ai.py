@@ -2,9 +2,10 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.api.deps import get_current_user
 from app.models.user import Users
@@ -27,7 +28,9 @@ router = APIRouter()
 # ---------------------------------------------------------------------------
 
 @router.get("/classify", response_model=ClassificationResponse)
+@limiter.limit("10/hour")
 async def classify_current_user(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -46,7 +49,9 @@ async def classify_current_user(
 # ---------------------------------------------------------------------------
 
 @router.post("/predict-risk", response_model=RiskPredictionResponse)
+@limiter.limit("10/hour")
 async def predict_addiction_risk(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -66,7 +71,9 @@ async def predict_addiction_risk(
 # ---------------------------------------------------------------------------
 
 @router.get("/insights", response_model=InsightResponse)
+@limiter.limit("10/hour")
 async def get_ai_insights(
+    request: Request,
     refresh: bool = Query(False, description="Force regenerate insights"),
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
@@ -125,7 +132,9 @@ async def get_ai_insights(
 # ---------------------------------------------------------------------------
 
 @router.post("/weekly-report", response_model=WeeklyReportGenerateResponse)
+@limiter.limit("5/hour")
 async def generate_weekly_report(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -142,7 +151,9 @@ async def generate_weekly_report(
 # ---------------------------------------------------------------------------
 
 @router.post("/generate-plan", response_model=PlanGenerateResponse)
+@limiter.limit("5/hour")
 async def generate_smart_plan(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -172,7 +183,9 @@ async def generate_smart_plan(
 # ---------------------------------------------------------------------------
 
 @router.post("/recommendations/generate", response_model=RecommendationGenerateResponse)
+@limiter.limit("10/hour")
 async def generate_content_recommendations(
+    request: Request,
     limit: int = Query(10, ge=1, le=30, description="Number of recommendations"),
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),

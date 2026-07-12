@@ -71,18 +71,15 @@ class Settings(BaseSettings):
     MAIL_SERVER: str = "smtp.dummy.com"
 
     @model_validator(mode="after")
-    def _warn_default_secret(self):
+    def _validate_secret_key(self):
         if self.SECRET_KEY == _DEFAULT_SECRET:
             if self.ENVIRONMENT == "production":
                 raise ValueError(
                     "SECRET_KEY must be changed from the default in production. "
                     "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
                 )
-            import logging
-            logging.getLogger("basma_api").warning(
-                "Using default SECRET_KEY in development — "
-                "set SECRET_KEY in .env for production."
-            )
+            # Auto-generate a random key for development
+            self.SECRET_KEY = secrets.token_hex(32)
         return self
 
     model_config = SettingsConfigDict(

@@ -122,7 +122,7 @@ function Ach() {
           </div>
         ) : earnedAchievements.length === 0 ? (
           <div className="col-span-full py-10 text-center text-sm text-muted-foreground">
-            لم تحصل على أي شارة بعد. استمر في النشاط!)
+            لم تحصل على أي شارة بعد. استمر في النشاط!
           </div>
         ) : (
           earnedAchievements.map((ach) => {

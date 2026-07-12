@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
@@ -47,17 +47,32 @@ function Mood() {
 
   const todayLog = moodLogs.find((m) => m.record_date === today);
 
-  const [sel, setSel] = useState<number | null>(todayLog?.mood_score || null);
-  const [stressScore, setStressScore] = useState(todayLog?.stress_score ?? 5);
-  const [note, setNote] = useState(todayLog?.note || "");
+  const [sel, setSel] = useState<number | null>(null);
+  const [stressScore, setStressScore] = useState(5);
+  const [note, setNote] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
+
+  // Sync state when mood data loads
+  useEffect(() => {
+    if (todayLog) {
+      setSel(todayLog.mood_score);
+      setStressScore(todayLog.stress_score ?? 5);
+      setNote(todayLog.note || "");
+    }
+  }, [todayLog]);
+
+  // Clear confetti after 1 second
+  useEffect(() => {
+    if (!showConfetti) return;
+    const timer = setTimeout(() => setShowConfetti(false), 1000);
+    return () => clearTimeout(timer);
+  }, [showConfetti]);
 
   const submitMoodMutation = useMutation({
     mutationFn: apiSubmitMood,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["moods"] });
       setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 1000);
       toast.success("تم حفظ مزاجك اليوم!");
       localStorage.setItem("basma-mood-date", today);
     },

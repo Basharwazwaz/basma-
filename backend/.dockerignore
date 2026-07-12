@@ -10,5 +10,3 @@ venv/
 *.md
 tests/
 scripts/
-alembic/
-alembic.ini

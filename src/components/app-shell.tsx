@@ -244,7 +244,9 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           </Avatar>
           <div className="flex-1 min-w-0">
             <div className="truncate text-sm font-semibold">{displayName}</div>
-            <div className="truncate text-xs text-muted-foreground">طالب · المستوى ٧</div>
+            <div className="truncate text-xs text-muted-foreground">
+              المستوى {Math.floor((user?.profile?.points ?? 0) / 300) + 1}
+            </div>
           </div>
         </div>
       </div>

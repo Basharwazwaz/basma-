@@ -133,7 +133,7 @@ function WeeklyReport() {
 
       {error && (
         <Card className="p-6 text-center text-destructive">
-          فшибка في تحميل التقارير. جرّب مرة أخرى لاحقًا.
+          خطأ في تحميل التقارير. جرّب مرة أخرى لاحقًا.
         </Card>
       )}
 

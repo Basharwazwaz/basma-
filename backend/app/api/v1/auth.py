@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 import httpx
 
@@ -16,6 +16,7 @@ from app.core.security import (
     get_password_hash,
     create_access_token,
     create_refresh_token,
+    create_reset_token,
     decode_token,
 )
 from app.api.deps import get_current_user
@@ -159,6 +160,12 @@ async def refresh_access_token(
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
+    # Check user exists and is active
+    user_result = await db.execute(select(Users).where(Users.id == user_id))
+    user = user_result.scalars().first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User not found or deactivated")
+
     new_access_token = create_access_token(subject=user_id)
     return {"access_token": new_access_token, "token_type": "bearer"}
 
@@ -202,15 +209,18 @@ async def forgot_password(request: Request, data: ForgotPassword, db: AsyncSessi
         return {"message": "If that email is in our system, we sent a reset link."}
 
     # 1-hour reset token
-    reset_token = create_access_token(subject=user.id, expires_delta=timedelta(hours=1))
+    reset_token = create_reset_token(subject=user.id)
     await send_reset_password_email(email_to=user.email, reset_token=reset_token)
     return {"message": "If that email is in our system, we sent a reset link."}
 
 
 @router.post("/reset-password")
-async def reset_password(data: ResetPassword, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def reset_password(request: Request, data: ResetPassword, db: AsyncSession = Depends(get_db)):
     try:
         payload = decode_token(data.token)
+        if payload.get("type") != "reset":
+            raise HTTPException(status_code=400, detail="Invalid token type")
         user_id = payload.get("sub")
         if not user_id:
             raise ValueError("No subject in token")

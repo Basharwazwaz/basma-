@@ -38,6 +38,12 @@ def create_refresh_token(subject: Union[str, Any], expires_delta: timedelta = No
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
+def create_reset_token(subject: Union[str, Any]) -> str:
+    expire = datetime.now(timezone.utc) + timedelta(hours=1)
+    to_encode = {"exp": expire, "sub": str(subject), "type": "reset"}
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+    return encoded_jwt
+
 def decode_token(token: str) -> dict:
     try:
         decoded_token = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
