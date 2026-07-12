@@ -8,7 +8,7 @@ wraps everything in a savepoint so a partial failure reverts cleanly.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional
 
 from sqlalchemy import select, update
@@ -53,7 +53,7 @@ async def onboard_user(
     Uses a SAVEPOINT so that if any step fails the entire block rolls back
     and the caller's outer transaction is unaffected.
     """
-    today: date = datetime.utcnow().date()
+    today: date = datetime.now(timezone.utc).date()
 
     async with db.begin_nested():   # SAVEPOINT
         # ── 1. Profile ────────────────────────────────────────────────────
@@ -186,7 +186,7 @@ async def update_profile(
     for field, value in update_data.items():
         setattr(profile, field, value)
 
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(profile)
     return profile
@@ -215,7 +215,7 @@ async def update_settings(
     for field, value in update_data.items():
         setattr(profile, field, value)
 
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = datetime.now(timezone.utc)
     await db.flush()
     await db.refresh(profile)
     return profile

@@ -2,6 +2,7 @@ import uuid
 from typing import List
 
 from fastapi import HTTPException
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -50,12 +51,13 @@ async def mark_as_read(
 
 
 async def mark_all_as_read(db: AsyncSession, user_id: uuid.UUID) -> None:
-    result = await db.execute(
-        select(Notifications).where(
+    stmt = (
+        update(Notifications)
+        .where(
             Notifications.user_id == user_id,
             Notifications.is_read == False,  # noqa: E712
         )
+        .values(is_read=True)
     )
-    for notif in result.scalars().all():
-        notif.is_read = True
+    await db.execute(stmt)
     await db.commit()

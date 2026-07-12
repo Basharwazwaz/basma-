@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Literal, Optional, List
 from datetime import date, datetime
 from pydantic import BaseModel, Field
 import uuid
@@ -9,7 +9,7 @@ class MoodBase(BaseModel):
     record_date: date
     mood_score: int = Field(..., ge=1, le=10)
     stress_score: int = Field(..., ge=1, le=10)
-    mood_state: str = Field(..., description="EXCELLENT, GOOD, NEUTRAL, BAD, TERRIBLE")
+    mood_state: Literal["EXCELLENT", "GOOD", "NEUTRAL", "BAD", "TERRIBLE"] = Field(..., description="EXCELLENT, GOOD, NEUTRAL, BAD, TERRIBLE")
     note: Optional[str] = Field(None, max_length=500)
 
 class MoodCreate(MoodBase):

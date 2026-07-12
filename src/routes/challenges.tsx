@@ -90,12 +90,12 @@ function Challenges() {
   const [activeTag, setActiveTag] = useState("الكل");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: allChallenges = [], isLoading: isLoadingAll } = useQuery({
-    queryKey: ["all_challenges"],
+  const { data: allChallenges = [], isLoading: isLoadingAll, isError: isAllError } = useQuery({
+    queryKey: ["challenges"],
     queryFn: () => apiGetAllChallenges(),
   });
 
-  const { data: userChallenges = [], isLoading: isLoadingUser } = useQuery({
+  const { data: userChallenges = [], isLoading: isLoadingUser, isError: isUserError } = useQuery({
     queryKey: ["user_challenges"],
     queryFn: () => apiGetUserChallenges(),
   });
@@ -146,6 +146,10 @@ function Challenges() {
       {isLoadingUser ? (
         <div className="flex justify-center py-4">
           <Loader2 className="animate-spin text-muted-foreground" />
+        </div>
+      ) : isUserError ? (
+        <div className="py-4 text-center text-sm text-destructive">
+          فшибка في تحميل تحدياتك. حاول لاحقاً.
         </div>
       ) : (
         activeEnrolled.length > 0 && (
@@ -232,6 +236,10 @@ function Challenges() {
       {isLoadingAll ? (
         <div className="flex justify-center py-10">
           <Loader2 className="animate-spin text-muted-foreground" />
+        </div>
+      ) : isAllError ? (
+        <div className="py-10 text-center text-sm text-destructive">
+          فшибка في تحميل التحديات. حاول لاحقاً.
         </div>
       ) : (
         <Tabs defaultValue="all">

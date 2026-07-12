@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -57,15 +57,18 @@ async def get_content(
     return content
 
 
-@router.post("/{content_id}/interact", response_model=ContentInteractionResponse)
+@router.post("/{content_id}/interact")
 async def interact_with_content(
     content_id: uuid.UUID,
     interaction_in: ContentInteractionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
-):
+) -> Any:
     """Record a user interaction with content (view, like, complete, bookmark)."""
-    return await content_service.record_interaction(db, current_user.id, content_id, interaction_in.interaction_type)
+    result = await content_service.record_interaction(db, current_user.id, content_id, interaction_in.interaction_type)
+    if result is None:
+        return {"status": "removed", "interaction_type": interaction_in.interaction_type}
+    return result
 
 
 @router.get("/{content_id}/interactions", response_model=List[ContentInteractionResponse])

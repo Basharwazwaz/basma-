@@ -22,7 +22,7 @@ async def get_all_content(
     if category:
         stmt = stmt.where(LearningContent.category == category)
     if search:
-        search_pattern = f"%{search}%"
+        search_pattern = f"%{search.replace('%', '\\%').replace('_', '\\_')}%"
         stmt = stmt.where(
             LearningContent.title.ilike(search_pattern)
             | LearningContent.description.ilike(search_pattern)
@@ -139,7 +139,7 @@ async def record_interaction(
         if interaction_type in ("like", "bookmark"):
             await db.delete(existing_interaction)
             await db.commit()
-            raise HTTPException(status_code=200, detail=f"Removed {interaction_type}")
+            return None
         # For view and complete, return existing
         return existing_interaction
 

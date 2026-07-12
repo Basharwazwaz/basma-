@@ -289,7 +289,7 @@ async def google_callback(
     then create-or-login the user and issue our own JWTs.
     """
     if error:
-        raise HTTPException(status_code=400, detail=f"Google OAuth error: {error}")
+        raise HTTPException(status_code=400, detail="Google OAuth error")
 
     async with httpx.AsyncClient() as client:
         # --- Exchange authorization code for Google tokens ---
@@ -307,7 +307,7 @@ async def google_callback(
         if token_response.status_code != 200:
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to exchange code with Google: {token_response.text}",
+                detail="Failed to exchange code with Google",
             )
 
         google_tokens = token_response.json()

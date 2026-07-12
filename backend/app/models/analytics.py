@@ -7,6 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base_class import Base
 
 class WeeklyReports(Base):
+    __tablename__ = "weekly_reports"
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
@@ -18,7 +20,13 @@ class WeeklyReports(Base):
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="weekly_reports")
 
+    __table_args__ = (
+        sqlalchemy.Index("ix_weekly_reports_user_date", "user_id", "start_date", "end_date"),
+    )
+
 class AIInsights(Base):
+    __tablename__ = "ai_insights"
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     insight_type: Mapped[str] = mapped_column(String(50), nullable=False) # E.g., WARNING, PRAISE, TIP
@@ -28,3 +36,7 @@ class AIInsights(Base):
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="ai_insights")
+
+    __table_args__ = (
+        sqlalchemy.Index("ix_ai_insights_user_type", "user_id", "insight_type"),
+    )

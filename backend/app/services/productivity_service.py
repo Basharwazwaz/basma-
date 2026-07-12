@@ -95,11 +95,12 @@ async def create_task(db: AsyncSession, user_id: uuid.UUID, task_in: TaskCreate)
     await db.refresh(db_task)
 
     # ── Achievement: first task created ────────────────────────────────────
-    from app.services.gamification_service import award_achievement, get_user_achievements
-    result = await db.execute(
-        select(Tasks).where(Tasks.user_id == user_id)
+    from app.services.gamification_service import award_achievement
+    from sqlalchemy import func
+    count_result = await db.execute(
+        select(func.count()).select_from(Tasks).where(Tasks.user_id == user_id)
     )
-    task_count = len(result.scalars().all())
+    task_count = count_result.scalar()
     if task_count == 1:
         await award_achievement(
             db, user_id,

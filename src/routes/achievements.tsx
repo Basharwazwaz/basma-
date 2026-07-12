@@ -52,7 +52,7 @@ function Ach() {
     queryFn: () => apiGetProfile(),
   });
 
-  const { data: earnedAchievements = [], isLoading: isAchLoading } = useQuery({
+  const { data: earnedAchievements = [], isLoading: isAchLoading, isError: isAchError } = useQuery({
     queryKey: ["achievements"],
     queryFn: () => apiGetAchievements(),
   });
@@ -119,6 +119,10 @@ function Ach() {
         {isAchLoading ? (
           <div className="col-span-full py-10 flex justify-center">
             <Loader2 className="animate-spin text-muted-foreground" />
+          </div>
+        ) : isAchError ? (
+          <div className="col-span-full py-10 text-center text-sm text-destructive">
+            فшибка في تحميل الشارات. حاول لاحقاً.
           </div>
         ) : earnedAchievements.length === 0 ? (
           <div className="col-span-full py-10 text-center text-sm text-muted-foreground">

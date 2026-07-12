@@ -38,6 +38,7 @@ async def get_mood_daily(
     current_user: Users = Depends(get_current_user),
 ):
     """Get mood data for the last N days (default 7)."""
+    days = max(1, min(days, 365))
     end_date = date.today()
     start_date = end_date - timedelta(days=days - 1)
     return await health_service.get_moods(db, current_user.id, start_date, end_date)
@@ -50,6 +51,7 @@ async def get_mood_weekly(
     current_user: Users = Depends(get_current_user),
 ):
     """Get mood data for the last N weeks (default 4)."""
+    weeks = max(1, min(weeks, 52))
     end_date = date.today()
     start_date = end_date - timedelta(weeks=weeks)
     return await health_service.get_moods(db, current_user.id, start_date, end_date)
@@ -97,6 +99,7 @@ async def get_habits_daily(
     current_user: Users = Depends(get_current_user),
 ):
     """Get digital habits for the last N days (default 7)."""
+    days = max(1, min(days, 365))
     end_date = date.today()
     start_date = end_date - timedelta(days=days - 1)
     return await health_service.get_digital_habits(db, current_user.id, start_date, end_date)
@@ -109,6 +112,7 @@ async def get_habits_weekly(
     current_user: Users = Depends(get_current_user),
 ):
     """Get digital habits for the last N weeks (default 4)."""
+    weeks = max(1, min(weeks, 52))
     end_date = date.today()
     start_date = end_date - timedelta(weeks=weeks)
     return await health_service.get_digital_habits(db, current_user.id, start_date, end_date)
@@ -121,6 +125,7 @@ async def get_habits_monthly(
     current_user: Users = Depends(get_current_user),
 ):
     """Get digital habits for the last N months (default 3)."""
+    months = max(1, min(months, 24))
     end_date = date.today()
     start_date = end_date - timedelta(days=months * 30)
     return await health_service.get_digital_habits(db, current_user.id, start_date, end_date)
@@ -149,5 +154,6 @@ async def get_digital_health_analytics(
     current_user: Users = Depends(get_current_user),
 ):
     """Get aggregated digital health analytics for the specified number of days."""
+    days = max(1, min(days, 365))
     return await health_service.get_digital_health_analytics(db, current_user.id, days)
 

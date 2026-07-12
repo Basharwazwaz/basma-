@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Literal, Optional, List
 from datetime import date, datetime, time
 from pydantic import BaseModel, Field
 import uuid
@@ -9,7 +9,7 @@ class GoalBase(BaseModel):
     title: str = Field(..., max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
     category: Optional[str] = Field(None, max_length=50)
-    status: Optional[str] = Field("NOT_STARTED")
+    status: Optional[Literal["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "ABANDONED"]] = Field("NOT_STARTED")
     target_date: Optional[date] = None
     progress_percent: Optional[int] = Field(0, ge=0, le=100)
 
@@ -20,7 +20,7 @@ class GoalUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=200)
     description: Optional[str] = Field(None, max_length=1000)
     category: Optional[str] = Field(None, max_length=50)
-    status: Optional[str] = None
+    status: Optional[Literal["NOT_STARTED", "IN_PROGRESS", "COMPLETED", "ABANDONED"]] = None
     target_date: Optional[date] = None
     progress_percent: Optional[int] = Field(None, ge=0, le=100)
 
@@ -39,7 +39,7 @@ class TaskBase(BaseModel):
     goal_id: Optional[uuid.UUID] = None
     title: str = Field(..., max_length=200)
     is_completed: Optional[bool] = False
-    status: Optional[str] = Field("PENDING")
+    status: Optional[Literal["PENDING", "IN_PROGRESS", "DONE"]] = Field("PENDING")
     due_date: Optional[date] = None
     pomodoro_sessions: Optional[int] = Field(0, ge=0)
 
@@ -50,7 +50,7 @@ class TaskUpdate(BaseModel):
     goal_id: Optional[uuid.UUID] = None
     title: Optional[str] = Field(None, max_length=200)
     is_completed: Optional[bool] = None
-    status: Optional[str] = None
+    status: Optional[Literal["PENDING", "IN_PROGRESS", "DONE"]] = None
     due_date: Optional[date] = None
     pomodoro_sessions: Optional[int] = Field(None, ge=0)
 

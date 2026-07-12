@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFileSync, existsSync, statSync } from "node:fs";
+import { readFile, existsSync, statSync } from "node:fs";
 import { join, extname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -20,7 +20,27 @@ const MIME = {
   ".ttf": "font/ttf",
 };
 
+const MAX_BODY_BYTES = 1024 * 1024; // 1 MB
+
 const handler = (await import("./dist/server/server.js")).default;
+
+function readBody(nodeReq) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let total = 0;
+    nodeReq.on("data", (c) => {
+      total += c.length;
+      if (total > MAX_BODY_BYTES) {
+        nodeReq.destroy();
+        reject(new Error("Body too large"));
+        return;
+      }
+      chunks.push(c);
+    });
+    nodeReq.on("end", () => resolve(Buffer.concat(chunks)));
+    nodeReq.on("error", reject);
+  });
+}
 
 const server = createServer(async (nodeReq, nodeRes) => {
   try {
@@ -31,7 +51,10 @@ const server = createServer(async (nodeReq, nodeRes) => {
       if (existsSync(filePath) && statSync(filePath).isFile()) {
         const ext = extname(filePath);
         nodeRes.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
-        nodeRes.end(readFileSync(filePath));
+        const data = await new Promise((resolve, reject) =>
+          readFile(filePath, (err, buf) => (err ? reject(err) : resolve(buf)))
+        );
+        nodeRes.end(data);
         return;
       }
     }
@@ -43,11 +66,7 @@ const server = createServer(async (nodeReq, nodeRes) => {
 
     const init = { method: nodeReq.method, headers };
     if (["POST", "PUT", "PATCH"].includes(nodeReq.method)) {
-      init.body = await new Promise((resolve) => {
-        const chunks = [];
-        nodeReq.on("data", (c) => chunks.push(c));
-        nodeReq.on("end", () => resolve(Buffer.concat(chunks)));
-      });
+      init.body = await readBody(nodeReq);
     }
 
     const webRes = await handler.fetch(new Request(url.toString(), init));

@@ -66,11 +66,11 @@ async def get_dashboard_summary(
             total_screen += hrs
             count_screen += 1
         screen_time_chart.append(
-            {"d": ar_days_long[curr_date.weekday()], "h": hrs if hrs > 0 else 4.0}
+            {"d": ar_days_long[curr_date.weekday()], "h": hrs if hrs > 0 else 0.0}
         )
 
     screen_time_avg = (
-        round(total_screen / count_screen, 1) if count_screen > 0 else 4.8
+        round(total_screen / count_screen, 1) if count_screen > 0 else 0.0
     )
 
     # ── 3. Dynamic scores from real data ──────────────────────────────────

@@ -294,7 +294,7 @@ function WeeklyReport() {
                     <div key={idx} className="p-4 hover:bg-muted/30 transition-colors">
                       <h4 className="font-bold text-sm mb-1">{rec.t}</h4>
                       <p className="text-xs text-muted-foreground mb-3">{rec.d}</p>
-                      <Button size="sm" variant="outline" className="w-full text-xs h-8">
+                      <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
                         {rec.a}
                       </Button>
                     </div>

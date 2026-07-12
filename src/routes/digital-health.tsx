@@ -39,7 +39,7 @@ function DH() {
   const [days, setDays] = useState(7);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ["digital-health", days],
     queryFn: () => apiGetDigitalHealthAnalytics(days),
   });
@@ -69,6 +69,10 @@ function DH() {
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
+      ) : isError ? (
+        <Card className="p-10 text-center text-sm text-destructive">
+          فшибка في تحميل البيانات. حاول لاحقاً.
+        </Card>
       ) : (
         <>
           <Card className="mb-6 p-6">

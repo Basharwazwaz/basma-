@@ -32,9 +32,9 @@ const ICON_MAP: Record<string, any> = {
 };
 
 const paths = [
-  { t: "مطوّر واجهات", c: "React · TypeScript · Tailwind", n: 12 },
-  { t: "عالم بيانات", c: "Python · SQL · ML", n: 18 },
-  { t: "مصمّم منتجات", c: "Figma · بحث · بروتوتايب", n: 9 },
+  { t: "مطوّر واجهات", c: "React · TypeScript · Tailwind", n: 12, q: "React" },
+  { t: "عالم بيانات", c: "Python · SQL · ML", n: 18, q: "Python" },
+  { t: "مصمّم منتجات", c: "Figma · بحث · بروتوتايب", n: 9, q: "تصميم" },
 ];
 
 function Hub() {
@@ -49,7 +49,7 @@ function Hub() {
     }
   });
 
-  const { data: allItems, isLoading } = useQuery({
+  const { data: allItems, isLoading, isError } = useQuery({
     queryKey: ["learning-content"],
     queryFn: () => apiGetLearningContent(),
   });
@@ -121,6 +121,10 @@ function Hub() {
           {isLoading ? (
             <div className="flex justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : isError ? (
+            <div className="py-10 text-center text-sm text-destructive">
+              فшибка في تحميل المحتوى. حاول لاحقاً.
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 text-center">
@@ -201,7 +205,7 @@ function Hub() {
                   <div className="mt-0.5 text-xs text-muted-foreground">{p.c}</div>
                   <div className="mt-2 flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{p.n} مورد</span>
-                    <Button size="sm" variant="ghost" className="px-2 text-primary">
+                    <Button size="sm" variant="ghost" className="px-2 text-primary" onClick={() => setSearchQuery(p.q)}>
                       استكشف
                     </Button>
                   </div>

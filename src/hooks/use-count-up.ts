@@ -5,6 +5,7 @@ export function useCountUp(endValue: number, duration: number = 1000) {
 
   useEffect(() => {
     let startTimestamp: number | null = null;
+    let frameId: number;
     const step = (timestamp: number) => {
       if (!startTimestamp) startTimestamp = timestamp;
       const progress = Math.min((timestamp - startTimestamp) / duration, 1);
@@ -12,12 +13,13 @@ export function useCountUp(endValue: number, duration: number = 1000) {
       const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
       setCount(Math.floor(easeProgress * endValue));
       if (progress < 1) {
-        window.requestAnimationFrame(step);
+        frameId = window.requestAnimationFrame(step);
       } else {
         setCount(endValue);
       }
     };
-    window.requestAnimationFrame(step);
+    frameId = window.requestAnimationFrame(step);
+    return () => window.cancelAnimationFrame(frameId);
   }, [endValue, duration]);
 
   return count;

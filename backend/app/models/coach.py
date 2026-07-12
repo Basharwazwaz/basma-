@@ -8,6 +8,8 @@ from app.db.base_class import Base
 
 
 class CoachMessages(Base):
+    __tablename__ = "coach_messages"
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), index=True)
     role: Mapped[str] = mapped_column(String(20), nullable=False)
@@ -16,3 +18,7 @@ class CoachMessages(Base):
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="coach_messages")
+
+    __table_args__ = (
+        sqlalchemy.Index("ix_coach_messages_user_created", "user_id", "created_at"),
+    )

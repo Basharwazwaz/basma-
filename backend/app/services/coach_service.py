@@ -19,15 +19,19 @@ try:
 except ImportError:
     has_gemini = False
 
+_gemini_client = None
 
-async def get_chat_history(db: AsyncSession, user_id: uuid.UUID) -> List[CoachMessages]:
-    """Retrieve all chat messages for a user, ordered by creation time."""
+
+async def get_chat_history(db: AsyncSession, user_id: uuid.UUID, limit: int = 20) -> List[CoachMessages]:
+    """Retrieve the last N chat messages for a user, ordered by creation time."""
     result = await db.execute(
         select(CoachMessages)
         .filter(CoachMessages.user_id == user_id)
-        .order_by(CoachMessages.created_at.asc())
+        .order_by(CoachMessages.created_at.desc())
+        .limit(limit)
     )
-    return result.scalars().all()
+    messages = list(reversed(result.scalars().all()))
+    return messages
 
 
 async def clear_chat_history(db: AsyncSession, user_id: uuid.UUID) -> None:
@@ -67,8 +71,11 @@ async def chat_with_coach(db: AsyncSession, user_id: uuid.UUID, message_in: Mess
         )
     else:
         try:
-            # Initialize client
-            client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            # Initialize client (singleton)
+            global _gemini_client
+            if _gemini_client is None:
+                _gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+            client = _gemini_client
             
             # Prepare contents
             contents = []

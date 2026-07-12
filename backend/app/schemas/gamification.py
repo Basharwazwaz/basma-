@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Literal, Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 import uuid
@@ -23,15 +23,14 @@ class ChallengeResponse(ChallengeBase):
 
 class UserChallengeBase(BaseModel):
     challenge_id: uuid.UUID
-    status: str = Field("ACTIVE", description="ACTIVE, COMPLETED, FAILED")
+    status: Literal["ACTIVE", "COMPLETED", "FAILED"] = Field("ACTIVE", description="ACTIVE, COMPLETED, FAILED")
     progress_days: int = Field(0, ge=0)
 
 class UserChallengeCreate(BaseModel):
     challenge_id: uuid.UUID
 
 class UserChallengeUpdate(BaseModel):
-    status: Optional[str] = None
-    progress_days: Optional[int] = None
+    status: Optional[Literal["ACTIVE", "COMPLETED", "FAILED"]] = None
 
 class UserChallengeResponse(UserChallengeBase):
     id: uuid.UUID
