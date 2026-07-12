@@ -299,8 +299,8 @@ export async function apiDeleteAccount(): Promise<void> {
   await apiFetch("/profile/", { method: "DELETE" });
 }
 
-export async function apiExportData(): Promise<FullUserData> {
-  return apiFetch<FullUserData>("/profile/");
+export async function apiExportData(): Promise<unknown> {
+  return apiFetch<unknown>("/profile/export");
 }
 
 // ──────────────────────────────────────────────────────────────────

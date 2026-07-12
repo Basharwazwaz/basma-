@@ -176,3 +176,24 @@ class UserMeUpdate(BaseModel):
     email: Optional[EmailStr] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Data Export
+# ─────────────────────────────────────────────────────────────────────────────
+
+class DataExportResponse(BaseModel):
+    """GET /profile/export — full user data for GDPR export."""
+    user: FullUserResponse
+    goals: List[dict] = []
+    tasks: List[dict] = []
+    planner: List[dict] = []
+    moods: List[dict] = []
+    digital_habits: List[dict] = []
+    achievements: List[dict] = []
+    user_challenges: List[dict] = []
+    weekly_reports: List[dict] = []
+    ai_insights: List[dict] = []
+    notifications: List[dict] = []
+    coach_messages: List[dict] = []
+    exported_at: datetime
