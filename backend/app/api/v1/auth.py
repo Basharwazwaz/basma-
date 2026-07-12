@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from urllib.parse import urlencode
+import uuid as _uuid
 import httpx
 
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
@@ -149,7 +150,10 @@ async def refresh_access_token(
 
     if not db_token or db_token.is_revoked:
         raise HTTPException(status_code=401, detail="Invalid or revoked refresh token")
-    if db_token.expires_at < datetime.now(timezone.utc):
+    expires_at = db_token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=401, detail="Refresh token expired")
 
     try:
@@ -161,7 +165,11 @@ async def refresh_access_token(
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
     # Check user exists and is active
-    user_result = await db.execute(select(Users).where(Users.id == user_id))
+    try:
+        uid = _uuid.UUID(user_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    user_result = await db.execute(select(Users).where(Users.id == uid))
     user = user_result.scalars().first()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or deactivated")

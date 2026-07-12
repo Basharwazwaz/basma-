@@ -1,9 +1,13 @@
 import { useState, useEffect } from "react";
 
-const _raf = typeof window !== "undefined" ? window.requestAnimationFrame.bind(window) : (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number;
-const _caf = typeof window !== "undefined" && window.cancelAnimationFrame
-  ? window.cancelAnimationFrame.bind(window)
-  : (id: number) => clearTimeout(id);
+const _raf =
+  typeof window !== "undefined"
+    ? window.requestAnimationFrame.bind(window)
+    : (cb: FrameRequestCallback) => setTimeout(cb, 16) as unknown as number;
+const _caf =
+  typeof window !== "undefined" && window.cancelAnimationFrame
+    ? window.cancelAnimationFrame.bind(window)
+    : (id: number) => clearTimeout(id);
 
 export function useCountUp(endValue: number, duration: number = 1000) {
   const [count, setCount] = useState(0);

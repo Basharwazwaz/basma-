@@ -32,7 +32,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { useCountUp } from "@/hooks/use-count-up";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiGetTasks, apiCreateTask, apiUpdateTask, apiGetDashboardSummary, apiSubmitMood } from "@/lib/api";
+import {
+  apiGetTasks,
+  apiCreateTask,
+  apiUpdateTask,
+  apiGetDashboardSummary,
+  apiSubmitMood,
+} from "@/lib/api";
 import { Loader2, type LucideIcon } from "lucide-react";
 import type { DashboardSummaryData } from "@/lib/api";
 
@@ -153,6 +159,7 @@ function Dashboard() {
       status: string;
     }) => apiUpdateTask(id, { is_completed, status: status as "DONE" | "PENDING" }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["tasks"] }),
+    onError: () => toast.error("فشل تحديث المهمة. حاول مرة أخرى."),
   });
 
   const createTaskMutation = useMutation({
@@ -161,6 +168,7 @@ function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       setNewTaskTitle("");
     },
+    onError: () => toast.error("فشل إضافة المهمة. حاول مرة أخرى."),
   });
 
   const [newTaskTitle, setNewTaskTitle] = useState("");
@@ -218,11 +226,11 @@ function Dashboard() {
 
   const logMood = (label: string, emoji: string) => {
     const valueMap: Record<string, number> = {
-      "ممتاز": 5,
-      "جيّد": 4,
-      "عادي": 3,
-      "سيّء": 2,
-      "مُرهق": 1,
+      ممتاز: 5,
+      جيّد: 4,
+      عادي: 3,
+      سيّء: 2,
+      مُرهق: 1,
     };
     const moodScore = valueMap[label] ?? 3;
     moodMutation.mutate({
@@ -431,9 +439,7 @@ function Dashboard() {
               <h3 className="text-lg font-bold">اقتراحات ذكيّة</h3>
             </div>
           </div>
-          <div
-            className={`space-y-3 transition-opacity duration-300`}
-          >
+          <div className={`space-y-3 transition-opacity duration-300`}>
             {currentSuggestions.map((s) => (
               <div key={s.t} className="rounded-lg border bg-muted/30 p-3">
                 <div className="text-sm font-semibold">{s.t}</div>
@@ -445,7 +451,8 @@ function Dashboard() {
                   onClick={() => {
                     if (s.a.includes("المخطط")) navigate({ to: "/planner" });
                     else if (s.a.includes("التحدي")) navigate({ to: "/challenges" });
-                    else if (s.a.includes("الكورس") || s.a.includes("المقال")) navigate({ to: "/learning-hub" });
+                    else if (s.a.includes("الكورس") || s.a.includes("المقال"))
+                      navigate({ to: "/learning-hub" });
                     else if (s.a.includes("الجلسة")) navigate({ to: "/planner" });
                     else if (s.a.includes("الأهداف")) navigate({ to: "/goals" });
                     else if (s.a.includes("التأمل")) navigate({ to: "/mood" });

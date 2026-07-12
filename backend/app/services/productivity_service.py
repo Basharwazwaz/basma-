@@ -3,6 +3,7 @@ from datetime import date
 from typing import List, Optional
 
 from fastapi import HTTPException
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
@@ -134,13 +135,12 @@ async def update_task(
     if was_not_completed and db_task.is_completed:
         from app.services.gamification_service import award_achievement
         # Check if user has any completed tasks (including this one)
-        completed_result = await db.execute(
-            select(Tasks).where(
+        completed_count = await db.scalar(
+            select(func.count(Tasks.id)).where(
                 Tasks.user_id == user_id,
                 Tasks.is_completed == True,
             )
         )
-        completed_count = len(completed_result.scalars().all())
         if completed_count == 1:
             await award_achievement(
                 db, user_id,

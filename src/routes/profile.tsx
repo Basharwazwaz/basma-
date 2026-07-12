@@ -120,6 +120,7 @@ function Profile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
     },
+    onError: () => toast.error("فشل تحديث الإعدادات. حاول مرة أخرى."),
   });
 
   const deleteAccountMutation = useMutation({
@@ -190,7 +191,11 @@ function Profile() {
             <div className="relative">
               <Avatar className="h-20 w-20">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="الصورة الشخصية" className="h-full w-full rounded-full object-cover" />
+                  <img
+                    src={avatarPreview}
+                    alt="الصورة الشخصية"
+                    className="h-full w-full rounded-full object-cover"
+                  />
                 ) : null}
                 <AvatarFallback className="gradient-primary text-2xl text-primary-foreground">
                   {initials}
@@ -400,7 +405,9 @@ function Profile() {
                 variant="destructive"
                 size="sm"
                 onClick={() => {
-                  if (window.confirm("هل أنت متأكد من حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه.")) {
+                  if (
+                    window.confirm("هل أنت متأكد من حذف حسابك؟ هذا الإجراء لا يمكن التراجع عنه.")
+                  ) {
                     deleteAccountMutation.mutate();
                   }
                 }}

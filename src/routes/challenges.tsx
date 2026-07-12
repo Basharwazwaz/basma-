@@ -10,7 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Trophy, Search, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { apiGetAllChallenges, apiGetUserChallenges, apiEnrollChallenge, apiCheckinChallenge } from "@/lib/api";
+import {
+  apiGetAllChallenges,
+  apiGetUserChallenges,
+  apiEnrollChallenge,
+  apiCheckinChallenge,
+} from "@/lib/api";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/challenges")({
@@ -90,12 +95,20 @@ function Challenges() {
   const [activeTag, setActiveTag] = useState("الكل");
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: allChallenges = [], isLoading: isLoadingAll, isError: isAllError } = useQuery({
+  const {
+    data: allChallenges = [],
+    isLoading: isLoadingAll,
+    isError: isAllError,
+  } = useQuery({
     queryKey: ["challenges"],
     queryFn: () => apiGetAllChallenges(),
   });
 
-  const { data: userChallenges = [], isLoading: isLoadingUser, isError: isUserError } = useQuery({
+  const {
+    data: userChallenges = [],
+    isLoading: isLoadingUser,
+    isError: isUserError,
+  } = useQuery({
     queryKey: ["user_challenges"],
     queryFn: () => apiGetUserChallenges(),
   });

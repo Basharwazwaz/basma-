@@ -180,7 +180,7 @@ function Index() {
               <Button size="lg" asChild className="gradient-primary shadow-glow">
                 <Link to="/auth/register">
                   ابدأ مجانًا
-                  <ArrowLeft className="mr-1 h-4 w-4" />
+                  <ArrowLeft className="ms-1 h-4 w-4 rtl:-scale-x-100" />
                 </Link>
               </Button>
               <Button size="lg" variant="outline" asChild>

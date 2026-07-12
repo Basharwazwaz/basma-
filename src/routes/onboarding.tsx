@@ -40,6 +40,8 @@ const interestOptions = ["رياضة", "ألعاب", "تقنية", "موسيقى
 
 interface OnboardingData {
   step: number;
+  firstName: string;
+  lastName: string;
   age: string;
   city: string;
   major: string;
@@ -55,6 +57,8 @@ interface OnboardingData {
 
 const DEFAULT_DATA: OnboardingData = {
   step: 0,
+  firstName: "",
+  lastName: "",
   age: "",
   city: "",
   major: "",
@@ -150,6 +154,8 @@ function Onboarding() {
     mutationFn: () =>
       apiSubmitOnboarding({
         personal: {
+          first_name: data.firstName || undefined,
+          last_name: data.lastName || undefined,
           age: data.age ? Number(data.age) : undefined,
           city: data.city || undefined,
           major: data.major || undefined,
@@ -235,6 +241,26 @@ function Onboarding() {
                   <p className="mt-1 text-sm text-muted-foreground">
                     نستخدم هذه المعلومات لتخصيص توصياتك — لن تُشارك مع أي طرف ثالث.
                   </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="ob-first-name">الاسم الأول</Label>
+                    <Input
+                      id="ob-first-name"
+                      placeholder="محمد"
+                      value={data.firstName}
+                      onChange={(e) => set("firstName", e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ob-last-name">اسم العائلة</Label>
+                    <Input
+                      id="ob-last-name"
+                      placeholder="أحمد"
+                      value={data.lastName}
+                      onChange={(e) => set("lastName", e.target.value)}
+                    />
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">

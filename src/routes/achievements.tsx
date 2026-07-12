@@ -31,14 +31,14 @@ const iconMap: Record<string, typeof Star> = {
   "عقل متعطّش": Brain,
   "بطل النوم": Moon,
   "منفصل عن الشاشة": Smartphone,
-  "متوازن": Heart,
-  "صاعقة": Zap,
-  "تحدي": Trophy,
-  "تعلم": Brain,
-  "نشاط": Flame,
-  "نوم": Moon,
-  "قراءة": BookOpen,
-  "صحة": Heart,
+  متوازن: Heart,
+  صاعقة: Zap,
+  تحدي: Trophy,
+  تعلم: Brain,
+  نشاط: Flame,
+  نوم: Moon,
+  قراءة: BookOpen,
+  صحة: Heart,
 };
 
 function getIcon(title: string, icon?: string | null) {
@@ -52,7 +52,11 @@ function Ach() {
     queryFn: () => apiGetProfile(),
   });
 
-  const { data: earnedAchievements = [], isLoading: isAchLoading, isError: isAchError } = useQuery({
+  const {
+    data: earnedAchievements = [],
+    isLoading: isAchLoading,
+    isError: isAchError,
+  } = useQuery({
     queryKey: ["achievements"],
     queryFn: () => apiGetAchievements(),
   });
@@ -132,10 +136,7 @@ function Ach() {
           earnedAchievements.map((ach) => {
             const Icon = getIcon(ach.title, ach.icon);
             return (
-              <Card
-                key={ach.id}
-                className="p-5 text-center transition-all hover:shadow-glow"
-              >
+              <Card key={ach.id} className="p-5 text-center transition-all hover:shadow-glow">
                 <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl gradient-primary text-primary-foreground shadow-glow relative overflow-hidden animate-shimmer">
                   <Icon className="h-8 w-8" />
                 </div>
@@ -145,9 +146,7 @@ function Ach() {
                   مفتوحة
                 </Badge>
                 {ach.earned_at && (
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {timeAgo(ach.earned_at)}
-                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">{timeAgo(ach.earned_at)}</p>
                 )}
               </Card>
             );
@@ -159,9 +158,7 @@ function Ach() {
         <h3 className="mb-4 text-lg font-bold">آخر الأنشطة</h3>
         <div className="space-y-2">
           {activityFeed.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-4">
-              لا توجد أنشطة بعد.
-            </p>
+            <p className="text-sm text-muted-foreground text-center py-4">لا توجد أنشطة بعد.</p>
           ) : (
             activityFeed.map((ach) => (
               <div

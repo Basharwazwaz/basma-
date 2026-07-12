@@ -80,22 +80,37 @@ function DH() {
               <div>
                 <div className="text-sm text-muted-foreground">نقاط الصحة الرقميّة</div>
                 <div className="mt-1 flex items-end gap-3">
-                  <span className="text-5xl font-extrabold text-primary">{data?.health_score || 0}</span>
-                  <span className={`mb-2 text-sm ${data?.score_trend && data.score_trend > 0 ? 'text-success' : data?.score_trend && data.score_trend < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                    {data?.score_trend && data.score_trend > 0 ? `+${data.score_trend}` : data?.score_trend} منذ الفترة الماضية
+                  <span className="text-5xl font-extrabold text-primary">
+                    {data?.health_score || 0}
+                  </span>
+                  <span
+                    className={`mb-2 text-sm ${data?.score_trend && data.score_trend > 0 ? "text-success" : data?.score_trend && data.score_trend < 0 ? "text-destructive" : "text-muted-foreground"}`}
+                  >
+                    {data?.score_trend && data.score_trend > 0
+                      ? `+${data.score_trend}`
+                      : data?.score_trend}{" "}
+                    منذ الفترة الماضية
                   </span>
                 </div>
                 <p className="mt-2 max-w-md text-sm text-muted-foreground">
-                  {data?.health_score && data.health_score > 80 
-                    ? "صحّتك الرقمية ممتازة. تابع التركيز على إبقاء الشاشة بعيدة ليلاً." 
+                  {data?.health_score && data.health_score > 80
+                    ? "صحّتك الرقمية ممتازة. تابع التركيز على إبقاء الشاشة بعيدة ليلاً."
                     : "نقاطك تحتاج لبعض التحسين. حاول تقليل وقت التواصل الاجتماعي."}
                 </p>
               </div>
               <div className="grid grid-cols-3 gap-4 sm:gap-6">
                 {[
-                  { l: "خطر الإدمان", v: (data?.health_score || 0) > 70 ? "منخفض" : "مرتفع", t: (data?.health_score || 0) > 70 ? "text-success" : "text-destructive" },
+                  {
+                    l: "خطر الإدمان",
+                    v: (data?.health_score || 0) > 70 ? "منخفض" : "مرتفع",
+                    t: (data?.health_score || 0) > 70 ? "text-success" : "text-destructive",
+                  },
                   { l: "استخدام", v: `${data?.health_score || 0}٪`, t: "text-info" },
-                  { l: "توازن", v: (data?.health_score || 0) > 80 ? "ممتاز" : "مقبول", t: "text-primary" },
+                  {
+                    l: "توازن",
+                    v: (data?.health_score || 0) > 80 ? "ممتاز" : "مقبول",
+                    t: "text-primary",
+                  },
                 ].map((s) => (
                   <div key={s.l} className="text-center">
                     <div className="text-xs text-muted-foreground">{s.l}</div>
@@ -114,7 +129,11 @@ function DH() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <BarChart data={screen}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                      opacity={0.4}
+                    />
                     <XAxis dataKey="d" fontSize={12} />
                     <YAxis fontSize={12} />
                     <Tooltip
@@ -135,7 +154,11 @@ function DH() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <LineChart data={sleepStress}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="hsl(var(--border))"
+                      opacity={0.4}
+                    />
                     <XAxis dataKey="d" fontSize={12} />
                     <YAxis fontSize={12} />
                     <Tooltip
@@ -203,7 +226,11 @@ function DH() {
                       <span className="text-sm font-semibold">{a.value}٪</span>
                     </div>
                   ))}
-                  <Button variant="outline" className="mt-2 w-full" onClick={() => queryClient.invalidateQueries({ queryKey: ["digital-health"] })}>
+                  <Button
+                    variant="outline"
+                    className="mt-2 w-full"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["digital-health"] })}
+                  >
                     تحديث البيانات
                   </Button>
                 </div>

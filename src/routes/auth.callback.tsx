@@ -20,6 +20,11 @@ function AuthCallback() {
     const accessToken = params.get("access_token");
     const error = params.get("error");
 
+    // Remove token from URL immediately to prevent leakage via address bar / history
+    if (accessToken || error) {
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     if (error) {
       toast.error("فشل تسجيل الدخول عبر Google", { description: error });
       navigate({ to: "/auth/login" });

@@ -20,16 +20,120 @@ basma-/
 └── e2e/                  # Playwright E2E tests
 ```
 
+### System Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        USERS (Browser / PWA)                    │
+│               React 19 · Vite · Tailwind CSS · RTL              │
+└───────────────────────────┬─────────────────────────────────────┘
+                            │  HTTPS (REST + JWT)
+                            ▼
+┌───────────────────────────┴─────────────────────────────────────┐
+│                     FastAPI Backend (port 8000)                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐   │
+│  │ Auth     │  │ Profile  │  │ Health   │  │ Productivity │   │
+│  │ (JWT+OA) │  │          │  │ (Mood)   │  │ (Goals/Tasks)│   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └──────┬───────┘   │
+│  ┌────┴─────┐  ┌────┴─────┐  ┌────┴─────┐  ┌──────┴───────┐   │
+│  │Gamifica- │  │ AI Coach │  │ Content  │  │ Analytics /  │   │
+│  │tion      │  │ (Gemini) │  │ Hub      │  │ Notifications│   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────────┘   │
+│                     │            Services Layer                  │
+│                     ▼                                           │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │         SQLAlchemy 2 (async) · Alembic Migrations        │   │
+│  └─────────────────────────┬────────────────────────────────┘   │
+│                            │                                    │
+└────────────────────────────┼────────────────────────────────────┘
+                             │
+              ┌──────────────┼──────────────┐
+              ▼              ▼              ▼
+     ┌──────────────┐ ┌───────────┐ ┌──────────────┐
+     │  PostgreSQL  │ │ scikit-   │ │ Google       │
+     │  Database    │ │ learn     │ │ Gemini API   │
+     │              │ │ (ML Models│ │ (AI Coach)   │
+     └──────────────┘ └───────────┘ └──────────────┘
+```
+
+### Entity-Relationship Diagram
+
+```
+┌──────────────┐       ┌────────────────┐
+│    users     │──1:1──│    profiles    │
+│──────────────│       │────────────────│
+│ id       (PK)│       │ user_id    (FK)│
+│ email        │       │ first_name     │
+│ hashed_pwd   │       │ last_name      │
+│ role         │       │ age / city     │
+│ is_active    │       │ points         │
+└──────┬───────┘       │ interests[]    │
+       │               └────────────────┘
+       │
+       ├──1:N──┌────────────────┐
+       │       │ refresh_tokens │
+       │       │ token / expires│
+       │       └────────────────┘
+       │
+       ├──1:N──┌──────────┐    ┌──────────┐
+       │       │   mood   │    │digital_  │
+       │       │mood_score│    │habits    │
+       │       │stress    │    │screen_t  │
+       │       └──────────┘    └──────────┘
+       │
+       ├──1:N──┌──────────┐──1:N──┌──────────┐
+       │       │  goals   │       │  tasks   │
+       │       │ status   │       │ goal_id  │
+       │       │ progress │       │ status   │
+       │       └──────────┘       └──────────┘
+       │
+       ├──1:N──┌──────────┐
+       │       │ planner  │
+       │       │ plan_date│
+       │       └──────────┘
+       │
+       ├──1:N──┌──────────────┐    ┌──────────────┐
+       │       │user_challenges│   │  challenges  │
+       │       │ challenge_id │───>│ points_reward│
+       │       └──────────────┘    └──────────────┘
+       │
+       ├──1:N──┌──────────────┐
+       │       │ achievements │
+       │       └──────────────┘
+       │
+       ├──1:N──┌──────────────┐
+       │       │ notifications│
+       │       └──────────────┘
+       │
+       ├──1:N──┌──────────────┐
+       │       │weekly_reports│
+       │       └──────────────┘
+       │
+       ├──1:N──┌──────────────┐
+       │       │ ai_insights  │
+       │       └──────────────┘
+       │
+       ├──1:N──┌──────────────┐
+       │       │coach_messages│
+       │       │ role / content│
+       │       └──────────────┘
+       │
+       └──1:N──┌──────────────┐──N:1──┌──────────────┐
+               │recommendations│      │learning_     │
+               │ score / reason│      │content       │
+               └──────────────┘       └──────────────┘
+```
+
 ## Tech Stack
 
-| Layer     | Stack                                                         |
-|-----------|---------------------------------------------------------------|
-| Frontend  | React 19, Vite, TanStack Router/Query, Recharts, shadcn/ui, Tailwind CSS |
-| Backend   | FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2          |
-| Database  | PostgreSQL                                                    |
-| Auth      | JWT access/refresh tokens, Google OAuth, bcrypt               |
-| AI/ML     | Google Gemini (AI Coach), scikit-learn (mood/stress models)  |
-| Testing   | pytest + httpx (backend), Vitest (frontend), Playwright (E2E) |
+| Layer    | Stack                                                                    |
+| -------- | ------------------------------------------------------------------------ |
+| Frontend | React 19, Vite, TanStack Router/Query, Recharts, shadcn/ui, Tailwind CSS |
+| Backend  | FastAPI, SQLAlchemy 2 (async), Alembic, Pydantic v2                      |
+| Database | PostgreSQL                                                               |
+| Auth     | JWT access/refresh tokens, Google OAuth, bcrypt                          |
+| AI/ML    | Google Gemini (AI Coach), scikit-learn (mood/stress models)              |
+| Testing  | pytest + httpx (backend), Vitest (frontend), Playwright (E2E)            |
 
 ## Features
 
@@ -101,15 +205,15 @@ docker compose up --build
 
 All endpoints are prefixed with `/api/v1`.
 
-| Module        | Key Endpoints                                              |
-|---------------|------------------------------------------------------------|
-| Auth          | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
-| Profile       | `GET /profile/`, `PUT /profile/`, `POST /profile/onboarding` |
-| Mood          | `POST /health/mood`, `GET /health/mood/history`           |
-| Planner       | `GET/POST /productivity/planner/`, `PUT /productivity/planner/{id}` |
-| Tasks         | `GET/POST /productivity/tasks/`                            |
-| Goals         | `GET/POST /productivity/goals/`, `PUT /productivity/goals/{id}` |
+| Module        | Key Endpoints                                                                |
+| ------------- | ---------------------------------------------------------------------------- |
+| Auth          | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`                    |
+| Profile       | `GET /profile/`, `PUT /profile/`, `POST /profile/onboarding`                 |
+| Mood          | `POST /health/mood`, `GET /health/mood/history`                              |
+| Planner       | `GET/POST /productivity/planner/`, `PUT /productivity/planner/{id}`          |
+| Tasks         | `GET/POST /productivity/tasks/`                                              |
+| Goals         | `GET/POST /productivity/goals/`, `PUT /productivity/goals/{id}`              |
 | Gamification  | `GET /gamification/challenges`, `POST /gamification/challenges/{id}/checkin` |
-| AI Coach      | `GET /ai/coach/messages`, `POST /ai/coach/messages`        |
-| Dashboard     | `GET /dashboard/summary`                                   |
-| Weekly Report | `GET /weekly-reports/`                                     |
+| AI Coach      | `GET /ai/coach/messages`, `POST /ai/coach/messages`                          |
+| Dashboard     | `GET /dashboard/summary`                                                     |
+| Weekly Report | `GET /weekly-reports/`                                                       |

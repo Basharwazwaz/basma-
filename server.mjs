@@ -52,7 +52,7 @@ const server = createServer(async (nodeReq, nodeRes) => {
         const ext = extname(filePath);
         nodeRes.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream" });
         const data = await new Promise((resolve, reject) =>
-          readFile(filePath, (err, buf) => (err ? reject(err) : resolve(buf)))
+          readFile(filePath, (err, buf) => (err ? reject(err) : resolve(buf))),
         );
         nodeRes.end(data);
         return;
@@ -71,7 +71,9 @@ const server = createServer(async (nodeReq, nodeRes) => {
 
     const webRes = await handler.fetch(new Request(url.toString(), init));
     const resHeaders = {};
-    webRes.headers.forEach((v, k) => { resHeaders[k] = v; });
+    webRes.headers.forEach((v, k) => {
+      resHeaders[k] = v;
+    });
     nodeRes.writeHead(webRes.status, resHeaders);
     nodeRes.end(Buffer.from(await webRes.arrayBuffer()));
   } catch (err) {

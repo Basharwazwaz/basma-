@@ -10,9 +10,7 @@ import { Lock, ArrowRight, CheckCircle2, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/auth/reset-password")({
   head: () => ({
-    meta: [
-      { title: "إعادة تعيين كلمة المرور | بصمة+" },
-    ],
+    meta: [{ title: "إعادة تعيين كلمة المرور | بصمة+" }],
   }),
   validateSearch: (search: Record<string, unknown>) => ({
     token: (search.token as string) ?? "",

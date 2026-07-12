@@ -19,7 +19,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Send, Bot, User, Sparkles, Trash2, Mic, Copy, CheckCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { apiGetCoachMessages, apiSendCoachMessage, apiClearCoachMessages, CoachMessageData } from "@/lib/api";
+import {
+  apiGetCoachMessages,
+  apiSendCoachMessage,
+  apiClearCoachMessages,
+  CoachMessageData,
+} from "@/lib/api";
 
 export const Route = createFileRoute("/ai-coach")({
   head: () => ({ meta: [{ title: "المدرّب الذكي | بصمة+" }] }),
@@ -60,19 +65,26 @@ function Coach() {
     onMutate: async (text) => {
       // Optimistic update for the user message
       await queryClient.cancelQueries({ queryKey: ["coach-messages"] });
-      const previousMessages = queryClient.getQueryData<CoachMessageData[]>(["coach-messages"]) || [];
+      const previousMessages =
+        queryClient.getQueryData<CoachMessageData[]>(["coach-messages"]) || [];
       const userMsg: CoachMessageData = {
         id: Date.now().toString(),
         role: "user",
         content: text,
         created_at: new Date().toISOString(),
       };
-      queryClient.setQueryData<CoachMessageData[]>(["coach-messages"], [...previousMessages, userMsg]);
+      queryClient.setQueryData<CoachMessageData[]>(
+        ["coach-messages"],
+        [...previousMessages, userMsg],
+      );
       return { previousMessages };
     },
     onSuccess: (data) => {
       // Append AI response
-      queryClient.setQueryData<CoachMessageData[]>(["coach-messages"], (old = []) => [...old, data]);
+      queryClient.setQueryData<CoachMessageData[]>(["coach-messages"], (old = []) => [
+        ...old,
+        data,
+      ]);
     },
     onError: (err, newTodo, context) => {
       toast.error("حدث خطأ أثناء الاتصال بالمدرّب الذكي.");
@@ -89,7 +101,7 @@ function Coach() {
     },
     onError: () => {
       toast.error("حدث خطأ أثناء مسح المحادثة.");
-    }
+    },
   });
 
   // Auto-scroll to bottom
@@ -113,7 +125,8 @@ function Coach() {
   const recognitionRef = useRef<any>(null);
 
   const startRecording = () => {
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const SpeechRecognition =
+      (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
     if (!SpeechRecognition) {
       toast.error("متصفحك لا يدعم التعرّف على الصوت.");
       return;
@@ -302,7 +315,11 @@ function Coach() {
                 disabled={!input.trim() || sendMutation.isPending || isRecording || isLoading}
                 className="gradient-primary shrink-0 rounded-full shadow-soft"
               >
-                {sendMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 rtl:-scale-x-100" />}
+                {sendMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 rtl:-scale-x-100" />
+                )}
               </Button>
             </form>
           </div>

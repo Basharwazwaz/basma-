@@ -238,6 +238,8 @@ export async function apiGetProfile(): Promise<FullUserData> {
 
 export interface OnboardingPayload {
   personal: {
+    first_name?: string;
+    last_name?: string;
     age?: number;
     city?: string;
     major?: string;
@@ -570,7 +572,9 @@ export interface DigitalHealthAnalyticsData {
   app_usage_chart: { name: string; value: number; color: string }[];
 }
 
-export async function apiGetDigitalHealthAnalytics(days: number = 7): Promise<DigitalHealthAnalyticsData> {
+export async function apiGetDigitalHealthAnalytics(
+  days: number = 7,
+): Promise<DigitalHealthAnalyticsData> {
   return apiFetch<DigitalHealthAnalyticsData>(`/health/analytics?days=${days}`);
 }
 
@@ -718,4 +722,3 @@ export interface WeeklyReportData {
 export async function apiGetWeeklyReports(): Promise<WeeklyReportData[]> {
   return apiFetch<WeeklyReportData[]>("/weekly-reports");
 }
-

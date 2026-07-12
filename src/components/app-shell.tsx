@@ -200,7 +200,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
   const displayName = user?.profile?.first_name
     ? `${user.profile.first_name}${user.profile.last_name ? " " + user.profile.last_name : ""}`
-    : user?.email ?? "بصمة+";
+    : (user?.email ?? "بصمة+");
   return (
     <div className="flex h-full flex-col">
       <Link to="/dashboard" className="flex items-center gap-3 px-6 py-6">
@@ -219,6 +219,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               key={item.to}
               to={item.to}
               onClick={onNavigate}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all overflow-hidden",
                 active
@@ -267,6 +268,12 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-screen bg-background">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:right-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
+      >
+        تخطّى إلى المحتوى الرئيسي
+      </a>
       {/* Desktop sidebar (right side in RTL) */}
       <aside className="fixed inset-y-0 right-0 hidden w-64 border-l bg-sidebar lg:block">
         <SidebarContent />
@@ -277,7 +284,7 @@ export function AppShell({
           <div className="flex items-center gap-3">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="lg:hidden">
+                <Button variant="ghost" size="icon" className="lg:hidden" aria-label="فتح القائمة">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -299,7 +306,9 @@ export function AppShell({
             <NotificationBell />
           </div>
         </header>
-        <main className="px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main id="main-content" tabIndex={-1} className="px-4 py-6 sm:px-6 lg:px-8">
+          {children}
+        </main>
       </div>
     </div>
   );

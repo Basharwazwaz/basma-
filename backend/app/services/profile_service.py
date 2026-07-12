@@ -71,8 +71,8 @@ async def onboard_user(
             profile = Profiles(user_id=user.id)
             db.add(profile)
 
-        profile.first_name         = profile.first_name
-        profile.last_name          = profile.last_name
+        profile.first_name         = personal.first_name or profile.first_name
+        profile.last_name          = personal.last_name  or profile.last_name
         profile.age                = personal.age        if personal.age  is not None else profile.age
         profile.city               = personal.city       or profile.city
         profile.major              = personal.major      or profile.major

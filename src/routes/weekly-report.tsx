@@ -34,7 +34,11 @@ export const Route = createFileRoute("/weekly-report")({
 });
 
 function WeeklyReport() {
-  const { data: reports, isLoading, error } = useQuery<WeeklyReportData[], Error>({
+  const {
+    data: reports,
+    isLoading,
+    error,
+  } = useQuery<WeeklyReportData[], Error>({
     queryKey: ["weekly-reports"],
     queryFn: apiGetWeeklyReports,
   });
@@ -49,26 +53,49 @@ function WeeklyReport() {
   const screenTimeTrend = (metrics.screen_time_trend as number) ?? 0;
   const studyTrend = (metrics.study_trend as number) ?? 0;
   const moodTrend = (metrics.mood_trend as number) ?? 0;
-  const comparisonData = (metrics.screen_time_comparison as { name: string; lastWeek: number; thisWeek: number }[]) ?? [];
+  const comparisonData =
+    (metrics.screen_time_comparison as { name: string; lastWeek: number; thisWeek: number }[]) ??
+    [];
 
   const AR_METRICS = [
-    { t: "وقت الشاشة", v: `${screenTimeAvg} س/يوم`, trend: screenTimeTrend, icon: Smartphone, color: "text-primary" },
-    { t: "ساعات الدراسة", v: `${studyHours} ساعة`, trend: studyTrend, icon: BookOpen, color: "text-info" },
+    {
+      t: "وقت الشاشة",
+      v: `${screenTimeAvg} س/يوم`,
+      trend: screenTimeTrend,
+      icon: Smartphone,
+      color: "text-primary",
+    },
+    {
+      t: "ساعات الدراسة",
+      v: `${studyHours} ساعة`,
+      trend: studyTrend,
+      icon: BookOpen,
+      color: "text-info",
+    },
     { t: "متوسط المزاج", v: `${moodAvg}/١٠`, trend: moodTrend, icon: Heart, color: "text-success" },
-    { t: "الأهداف المنجزة", v: `${goalsCompleted} أهداف`, trend: 0, icon: Target, color: "text-warning" },
+    {
+      t: "الأهداف المنجزة",
+      v: `${goalsCompleted} أهداف`,
+      trend: 0,
+      icon: Target,
+      color: "text-warning",
+    },
   ];
 
   const aiInsights = (latestReport?.metrics_summary as Record<string, unknown>)?.insights as
-    | { t: string; d: string; tag: string; tagColor: string }[]
-    | undefined;
+    { t: string; d: string; tag: string; tagColor: string }[] | undefined;
 
   const INSIGHTS = aiInsights ?? [
-    { t: "أداء متميز", d: "استمر في العمل الجيد!", tag: "عام", tagColor: "bg-primary/10 text-primary hover:bg-primary/20" },
+    {
+      t: "أداء متميز",
+      d: "استمر في العمل الجيد!",
+      tag: "عام",
+      tagColor: "bg-primary/10 text-primary hover:bg-primary/20",
+    },
   ];
 
-  const recommendations = (latestReport?.metrics_summary as Record<string, unknown>)?.recommendations as
-    | { t: string; d: string; a: string }[]
-    | undefined;
+  const recommendations = (latestReport?.metrics_summary as Record<string, unknown>)
+    ?.recommendations as { t: string; d: string; a: string }[] | undefined;
 
   const RECOMMENDATIONS = recommendations ?? [
     { t: "تابع التقدم", d: "راجع تقاريرك السابقة وتابع تطورك.", a: "عرض التقارير" },
@@ -93,7 +120,7 @@ function WeeklyReport() {
             </div>
             <h2 className="text-2xl font-bold">
               {latestReport
-                ? latestReport.ai_summary ?? "تقرير الأسبوع"
+                ? (latestReport.ai_summary ?? "تقرير الأسبوع")
                 : "لم يتم إنشاء أي تقرير بعد"}
             </h2>
           </div>
@@ -106,7 +133,8 @@ function WeeklyReport() {
             <div className="h-10 w-px bg-white/20" />
             <div className="flex flex-col items-center">
               <Badge variant="secondary" className="bg-success text-success-foreground border-none">
-                <TrendingUp className="h-3 w-3 me-1" /> +{screenTimeTrend < 0 ? Math.abs(screenTimeTrend) : studyTrend > 0 ? studyTrend : 0}٪
+                <TrendingUp className="h-3 w-3 me-1" /> +
+                {screenTimeTrend < 0 ? Math.abs(screenTimeTrend) : studyTrend > 0 ? studyTrend : 0}٪
               </Badge>
               <div className="text-[10px] opacity-80 uppercase tracking-widest mt-1.5">النمو</div>
             </div>
@@ -294,7 +322,12 @@ function WeeklyReport() {
                     <div key={idx} className="p-4 hover:bg-muted/30 transition-colors">
                       <h4 className="font-bold text-sm mb-1">{rec.t}</h4>
                       <p className="text-xs text-muted-foreground mb-3">{rec.d}</p>
-                      <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full text-xs h-8"
+                        onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                      >
                         {rec.a}
                       </Button>
                     </div>

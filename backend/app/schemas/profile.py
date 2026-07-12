@@ -12,7 +12,9 @@ from pydantic import BaseModel, EmailStr, field_validator
 # ─────────────────────────────────────────────────────────────────────────────
 
 class PersonalInfo(BaseModel):
-    """Step 0 — age, city, major. All optional so partial saves work."""
+    """Step 0 — name, age, city, major. All optional so partial saves work."""
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
     age: Optional[int] = None
     city: Optional[str] = None
     major: Optional[str] = None

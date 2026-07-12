@@ -62,7 +62,12 @@ async def test_onboarding(async_client: AsyncClient):
     response = await async_client.post(
         "/api/v1/profile/onboarding",
         json={
-            "personal": {"age": 22, "city": "جدة"},
+            "personal": {
+                "first_name": "سارة",
+                "last_name": "العلي",
+                "age": 22,
+                "city": "جدة",
+            },
             "digital": {
                 "screen_time_hours": 5,
                 "social_media_hours": 2,
@@ -81,6 +86,43 @@ async def test_onboarding(async_client: AsyncClient):
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 201
+    profile = response.json()
+    assert profile["first_name"] == "سارة"
+    assert profile["last_name"] == "العلي"
+    assert profile["age"] == 22
+    assert profile["city"] == "جدة"
+
+
+@pytest.mark.asyncio
+async def test_onboarding_preserves_existing_names(async_client: AsyncClient):
+    """Onboarding with empty names should not overwrite names set during registration."""
+    token = await _register_and_login(async_client, "names@example.com")
+    # Register already sets first_name="أحمد" via _register_and_login
+    response = await async_client.post(
+        "/api/v1/profile/onboarding",
+        json={
+            "personal": {"age": 25},
+            "digital": {
+                "screen_time_hours": 4,
+                "social_media_hours": 1,
+                "sleep_hours": 8,
+            },
+            "mental": {
+                "mood_score": 7,
+                "stress_score": 3,
+            },
+            "plan": {
+                "goals": ["تحسين النوم"],
+                "interests": ["رياضة"],
+            },
+        },
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 201
+    profile = response.json()
+    # Names from registration should be preserved
+    assert profile["first_name"] == "أحمد"
+    assert profile["last_name"] is None
 
 
 @pytest.mark.asyncio

@@ -12,3 +12,4 @@ from app.models.gamification import Challenges, UserChallenges, Achievements
 from app.models.content import LearningContent, Recommendations, UserContentInteraction
 from app.models.analytics import WeeklyReports, AIInsights
 from app.models.notifications import Notifications
+from app.models.coach import CoachMessages

@@ -6,7 +6,16 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Bookmark, Clock, Search, PlayCircle, BookOpen, FileText, Briefcase, Loader2 } from "lucide-react";
+import {
+  Bookmark,
+  Clock,
+  Search,
+  PlayCircle,
+  BookOpen,
+  FileText,
+  Briefcase,
+  Loader2,
+} from "lucide-react";
 import { apiGetLearningContent } from "@/lib/api";
 
 export const Route = createFileRoute("/learning-hub")({
@@ -49,7 +58,11 @@ function Hub() {
     }
   });
 
-  const { data: allItems, isLoading, isError } = useQuery({
+  const {
+    data: allItems,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ["learning-content"],
     queryFn: () => apiGetLearningContent(),
   });
@@ -71,7 +84,10 @@ function Hub() {
     if (!allItems) return [];
     return allItems.filter((item) => {
       const typeMatch = activeFilter === "الكل" || item.content_type === TYPE_MAP[activeFilter];
-      const searchMatch = !searchQuery || item.title.toLowerCase().includes(searchQuery.toLowerCase()) || (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      const searchMatch =
+        !searchQuery ||
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()));
       return typeMatch && searchMatch;
     });
   }, [allItems, activeFilter, searchQuery]);
@@ -161,7 +177,9 @@ function Hub() {
                         onClick={() => toggleBookmark(i.id)}
                         title={bookmarkedIds.has(i.id) ? "إزالة من المحفوظات" : "حفظ"}
                       >
-                        <Bookmark className={`h-4 w-4 ${bookmarkedIds.has(i.id) ? "fill-primary" : ""}`} />
+                        <Bookmark
+                          className={`h-4 w-4 ${bookmarkedIds.has(i.id) ? "fill-primary" : ""}`}
+                        />
                       </button>
                     </div>
                     <h3 className="font-bold leading-snug">{i.title}</h3>
@@ -178,7 +196,9 @@ function Hub() {
                       )}
                     </div>
                     {i.description && (
-                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">{i.description}</p>
+                      <p className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                        {i.description}
+                      </p>
                     )}
                     <Button variant="outline" size="sm" className="mt-auto pt-4" asChild>
                       <a href={i.url || "#"} target="_blank" rel="noopener noreferrer">
@@ -205,7 +225,12 @@ function Hub() {
                   <div className="mt-0.5 text-xs text-muted-foreground">{p.c}</div>
                   <div className="mt-2 flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">{p.n} مورد</span>
-                    <Button size="sm" variant="ghost" className="px-2 text-primary" onClick={() => setSearchQuery(p.q)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="px-2 text-primary"
+                      onClick={() => setSearchQuery(p.q)}
+                    >
                       استكشف
                     </Button>
                   </div>

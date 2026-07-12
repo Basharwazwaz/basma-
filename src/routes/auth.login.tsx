@@ -47,9 +47,7 @@ function Login() {
     } catch (err) {
       let msg: string;
       if (err instanceof ApiError) {
-        msg = err.status === 401
-          ? "البريد الإلكتروني أو كلمة المرور غير صحيحة."
-          : err.message;
+        msg = err.status === 401 ? "البريد الإلكتروني أو كلمة المرور غير صحيحة." : err.message;
       } else {
         msg = "حدث خطأ غير متوقع. حاول مرة أخرى.";
       }
@@ -121,7 +119,11 @@ function Login() {
               />
             </div>
             <div className="flex items-center gap-2">
-              <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(v === true)} />
+              <Checkbox
+                id="remember"
+                checked={remember}
+                onCheckedChange={(v) => setRemember(v === true)}
+              />
               <Label htmlFor="remember" className="text-sm font-normal">
                 تذكّرني
               </Label>

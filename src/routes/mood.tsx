@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Sparkles, CheckCircle2, Loader2 } from "lucide-react";
+import { Sparkles, CheckCircle2, Loader2, Smile } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -93,7 +93,10 @@ function Mood() {
     });
   };
 
-  const isSaved = todayLog?.mood_score === sel && todayLog?.note === note && todayLog?.stress_score === stressScore;
+  const isSaved =
+    todayLog?.mood_score === sel &&
+    todayLog?.note === note &&
+    todayLog?.stress_score === stressScore;
 
   const chartData = useMemo(() => {
     // Reverse so oldest is first (for chart LTR or RTL logic)
@@ -151,7 +154,9 @@ function Mood() {
 
     return dayNames.map((d, i) => ({
       d,
-      mood: moodByDay[i]?.length ? Math.round(moodByDay[i].reduce((a, b) => a + b, 0) / moodByDay[i].length) : 0,
+      mood: moodByDay[i]?.length
+        ? Math.round(moodByDay[i].reduce((a, b) => a + b, 0) / moodByDay[i].length)
+        : 0,
       study: Math.round(studyHours[i] * 10) / 10,
     }));
   }, [moodLogs, plannerItems]);
@@ -262,6 +267,16 @@ function Mood() {
         <Card className="mb-6 bg-success/10 p-4 text-success-foreground">
           <strong className="text-success">رائع!</strong> يومك يبدو إيجابيًا. حاول الحفاظ على هذا
           الإيقاع بنوم منتظم وتعرّض كافٍ للشمس.
+        </Card>
+      )}
+
+      {!isLoading && moodLogs.length === 0 && (
+        <Card className="mb-6 flex flex-col items-center justify-center py-12 text-center border-dashed">
+          <Smile className="mb-3 h-10 w-10 text-muted-foreground/40" />
+          <p className="font-semibold text-muted-foreground">لم تسجل مزاجك بعد</p>
+          <p className="mt-1 text-sm text-muted-foreground/70">
+            سجّل مزاجك اليوم لتبدأ رحلة التتبّع
+          </p>
         </Card>
       )}
 

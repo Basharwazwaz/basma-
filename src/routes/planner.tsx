@@ -24,9 +24,17 @@ import {
   Sparkles,
   Loader2,
   X,
+  CalendarDays,
 } from "lucide-react";
 import { usePomodoro, type PomodoroSettings, type SessionType } from "@/hooks/use-pomodoro";
-import { apiGetTasks, apiCreateTask, apiUpdateTask, apiDeleteTask, apiGetPlanner, apiGenerateSmartPlan } from "@/lib/api";
+import {
+  apiGetTasks,
+  apiCreateTask,
+  apiUpdateTask,
+  apiDeleteTask,
+  apiGetPlanner,
+  apiGenerateSmartPlan,
+} from "@/lib/api";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 
@@ -178,11 +186,13 @@ function Planner() {
       setIsAddingTask(false);
       toast.success("تم إضافة المهمة");
     },
+    onError: () => toast.error("فشل إضافة المهمة. حاول مرة أخرى."),
   });
 
   const deleteTaskMutation = useMutation({
     mutationFn: apiDeleteTask,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY }),
+    onError: () => toast.error("فشل حذف المهمة. حاول مرة أخرى."),
   });
 
   const generatePlanMutation = useMutation({
@@ -227,8 +237,19 @@ function Planner() {
 
     const titleLower = p.title.toLowerCase();
     let cat = "study";
-    if (titleLower.includes("استراحة") || titleLower.includes("راحة") || titleLower.includes("صحة") || titleLower.includes("تمارين")) cat = "health";
-    else if (titleLower.includes("مراجعة") || titleLower.includes("test") || titleLower.includes("امتحان")) cat = "exam";
+    if (
+      titleLower.includes("استراحة") ||
+      titleLower.includes("راحة") ||
+      titleLower.includes("صحة") ||
+      titleLower.includes("تمارين")
+    )
+      cat = "health";
+    else if (
+      titleLower.includes("مراجعة") ||
+      titleLower.includes("test") ||
+      titleLower.includes("امتحان")
+    )
+      cat = "exam";
     else if (titleLower.includes("شخصي") || titleLower.includes("family")) cat = "personal";
     else if (titleLower.includes("مهنة") || titleLower.includes("career")) cat = "career";
     else if (titleLower.includes("تعلم") || titleLower.includes("learn")) cat = "learn";
@@ -269,6 +290,15 @@ function Planner() {
             {isLoadingPlanner && (
               <div className="absolute inset-0 flex justify-center items-center bg-background/50 z-10">
                 <Loader2 className="animate-spin" />
+              </div>
+            )}
+            {!isLoadingPlanner && displaySlots.length === 0 && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-background/50">
+                <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground/40" />
+                <p className="font-semibold text-muted-foreground">لا توجد خطط بعد</p>
+                <p className="mt-1 text-sm text-muted-foreground/70">
+                  اضغط "خطّة ذكيّة" لإنشاء خطتك الأسبوعية
+                </p>
               </div>
             )}
             {days.map((_, di) => (

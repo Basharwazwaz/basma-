@@ -68,6 +68,7 @@ function Goals() {
       status?: "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ABANDONED";
     }) => apiUpdateGoal(id, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY }),
+    onError: () => toast.error("فشل تحديث الهدف. حاول مرة أخرى."),
   });
 
   const deleteGoalMutation = useMutation({
@@ -76,6 +77,7 @@ function Goals() {
       queryClient.invalidateQueries({ queryKey: GOALS_QUERY_KEY });
       toast.success("تم حذف الهدف");
     },
+    onError: () => toast.error("فشل حذف الهدف. حاول مرة أخرى."),
   });
 
   function handleAdd(e: React.FormEvent) {
