@@ -42,7 +42,11 @@ export function useAuth() {
   } = useQuery<FullUserData | null>({
     queryKey: PROFILE_QUERY_KEY,
     queryFn: async () => {
-      if (!tokenStore.get()) return null;
+      if (!tokenStore.get()) {
+        const { apiRefreshToken } = await import("@/lib/api");
+        const refreshed = await apiRefreshToken();
+        if (!refreshed) return null;
+      }
       try {
         return await apiGetProfile();
       } catch {
@@ -81,6 +85,12 @@ export function useAuth() {
         staleTime: 0,
       });
 
+      if (!profile) return;
+      // Admin goes directly to admin panel
+      if (profile.role === "ADMIN") {
+        navigate({ to: "/admin" });
+        return;
+      }
       // Check if onboarding is needed (no age = not completed)
       if (profile?.profile && !profile.profile.age) {
         navigate({ to: "/onboarding" });

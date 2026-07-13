@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -8,6 +9,7 @@ from app.core.logging import setup_logging
 from app.core.exceptions import setup_exception_handlers
 from app.core.middleware import SecurityHeadersMiddleware
 from app.api.v1.router import api_router
+import os
 
 # Setup structured logging
 logger = setup_logging(debug=settings.DEBUG)
@@ -47,6 +49,11 @@ def create_app() -> FastAPI:
 
     # Include the main API router
     app.include_router(api_router, prefix=settings.API_V1_STR)
+
+    # Serve uploaded files (avatars, etc.)
+    uploads_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "uploads")
+    if os.path.isdir(uploads_dir):
+        app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
     @app.get("/")
     def root():

@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel, ConfigDict
@@ -9,7 +8,7 @@ class MessageCreate(BaseModel):
 
 
 class MessageResponse(BaseModel):
-    id: uuid.UUID
+    id: str
     role: str
     content: str
     created_at: datetime

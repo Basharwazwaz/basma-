@@ -68,7 +68,7 @@ async def log_mood(
 
 @router.delete("/mood/{mood_id}")
 async def delete_mood(
-    mood_id: uuid.UUID,
+    mood_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):

@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from fastapi import HTTPException
 from sqlalchemy import update
@@ -22,6 +22,34 @@ async def get_user_notifications(
 
 
 async def create_notification(
+    db: AsyncSession,
+    user_id: str,
+    message: str,
+    notif_type: str = "system",
+    title: str = "تنبيه",
+) -> Notifications:
+    db_notif = Notifications(user_id=user_id, title=title, message=message, notification_type=notif_type)
+    db.add(db_notif)
+    await db.commit()
+    await db.refresh(db_notif)
+
+    try:
+        from app.services.websocket_manager import manager
+        await manager.send_to_user(user_id, {
+            "type": "notification",
+            "id": db_notif.id,
+            "message": db_notif.message,
+            "notif_type": db_notif.notification_type,
+            "is_read": db_notif.is_read,
+            "created_at": db_notif.created_at.isoformat() if db_notif.created_at else None,
+        })
+    except Exception:
+        pass
+
+    return db_notif
+
+
+async def create_notification_from_schema(
     db: AsyncSession, notification_in: NotificationCreate
 ) -> Notifications:
     db_notif = Notifications(**notification_in.model_dump())
@@ -32,7 +60,7 @@ async def create_notification(
 
 
 async def mark_as_read(
-    db: AsyncSession, user_id: uuid.UUID, notification_id: uuid.UUID
+    db: AsyncSession, user_id: str, notification_id: str
 ) -> Notifications:
     result = await db.execute(
         select(Notifications).where(
@@ -50,7 +78,7 @@ async def mark_as_read(
     return db_notif
 
 
-async def mark_all_as_read(db: AsyncSession, user_id: uuid.UUID) -> None:
+async def mark_all_as_read(db: AsyncSession, user_id: str) -> None:
     stmt = (
         update(Notifications)
         .where(

@@ -22,9 +22,9 @@ export const Route = createFileRoute("/auth/login")({
 
 function Login() {
   const { login } = useAuth();
-  const [email, setEmail] = useState(() => localStorage.getItem("basma_remember_email") ?? "");
+  const [email, setEmail] = useState(() => typeof window !== "undefined" ? localStorage.getItem("basma_remember_email") ?? "" : "");
   const [password, setPassword] = useState("");
-  const [remember, setRemember] = useState(() => !!localStorage.getItem("basma_remember_email"));
+  const [remember, setRemember] = useState(() => typeof window !== "undefined" ? !!localStorage.getItem("basma_remember_email") : false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {

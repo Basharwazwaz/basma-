@@ -45,7 +45,7 @@ async def create_goal(
 
 @router.put("/goals/{goal_id}", response_model=GoalResponse)
 async def update_goal(
-    goal_id: uuid.UUID,
+    goal_id: str,
     goal_in: GoalUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
@@ -56,7 +56,7 @@ async def update_goal(
 
 @router.delete("/goals/{goal_id}")
 async def delete_goal(
-    goal_id: uuid.UUID,
+    goal_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -71,7 +71,7 @@ async def delete_goal(
 
 @router.get("/tasks", response_model=List[TaskResponse])
 async def get_tasks(
-    goal_id: Optional[uuid.UUID] = None,
+    goal_id: Optional[str] = None,
     due_date: Optional[date] = None,
     skip: int = Query(0, ge=0, description="Number of records to skip"),
     limit: int = Query(50, ge=1, le=100, description="Max records to return"),
@@ -94,7 +94,7 @@ async def create_task(
 
 @router.put("/tasks/{task_id}", response_model=TaskResponse)
 async def update_task(
-    task_id: uuid.UUID,
+    task_id: str,
     task_in: TaskUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
@@ -105,7 +105,7 @@ async def update_task(
 
 @router.delete("/tasks/{task_id}")
 async def delete_task(
-    task_id: uuid.UUID,
+    task_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -142,7 +142,7 @@ async def create_planner_item(
 
 @router.put("/planner/{item_id}", response_model=PlannerResponse)
 async def update_planner_item(
-    item_id: uuid.UUID,
+    item_id: str,
     item_in: PlannerUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
@@ -155,7 +155,7 @@ async def update_planner_item(
 
 @router.delete("/planner/{item_id}")
 async def delete_planner_item(
-    item_id: uuid.UUID,
+    item_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):

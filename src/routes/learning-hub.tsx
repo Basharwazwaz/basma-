@@ -140,7 +140,7 @@ function Hub() {
             </div>
           ) : isError ? (
             <div className="py-10 text-center text-sm text-destructive">
-              فшибка في تحميل المحتوى. حاول لاحقاً.
+              فشل في تحميل المحتوى. حاول لاحقاً.
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 text-center">

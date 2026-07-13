@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import List, Optional
-from uuid import UUID
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, field_validator
@@ -93,8 +92,8 @@ class OnboardingPayload(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ProfileResponse(BaseModel):
-    id: UUID
-    user_id: UUID
+    id: str
+    user_id: str
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     age: Optional[int] = None
@@ -117,7 +116,7 @@ class ProfileResponse(BaseModel):
 
 class FullUserResponse(BaseModel):
     """Returned by GET /profile — user + nested profile."""
-    id: UUID
+    id: str
     email: EmailStr
     role: str
     is_active: bool

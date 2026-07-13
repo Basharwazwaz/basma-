@@ -21,6 +21,9 @@ import {
   Sun,
   Moon,
   FileBarChart,
+  Languages,
+  LogOut,
+  Shield,
 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { useAuth } from "@/hooks/use-auth";
@@ -32,7 +35,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNotifications, type NotificationType } from "@/hooks/use-notifications";
 import { formatDistanceToNow } from "date-fns";
-import { ar } from "date-fns/locale";
+import { ar, enUS } from "date-fns/locale";
+import { useT } from "@/i18n/use-t";
 
 const nav = [
   { to: "/dashboard", label: "لوحة التحكم", icon: LayoutDashboard },
@@ -64,6 +68,7 @@ const TYPE_COLOR: Record<NotificationType, string> = {
 
 function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { t, currentLanguage } = useT();
 
   return (
     <Popover>
@@ -82,7 +87,7 @@ function NotificationBell() {
         {/* Header */}
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold">الإشعارات</h3>
+            <h3 className="text-sm font-semibold">{t("profile.notifications")}</h3>
             {unreadCount > 0 && (
               <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                 {unreadCount} جديد
@@ -105,8 +110,8 @@ function NotificationBell() {
           {notifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
               <Bell className="mb-3 h-12 w-12 text-muted-foreground/20" />
-              <p className="font-semibold text-muted-foreground">لا توجد إشعارات حالياً</p>
-              <p className="mt-1 text-xs text-muted-foreground/70">سيتم إعلامك بكل جديد هنا</p>
+              <p className="font-semibold text-muted-foreground">{currentLanguage === "ar" ? "لا توجد إشعارات حالياً" : "No notifications yet"}</p>
+              <p className="mt-1 text-xs text-muted-foreground/70">{currentLanguage === "ar" ? "سيتم إعلامك بكل جديد هنا" : "We'll notify you here"}</p>
             </div>
           ) : (
             <div className="divide-y">
@@ -115,7 +120,7 @@ function NotificationBell() {
                 const colorClass = TYPE_COLOR[n.type];
                 const timeAgo = formatDistanceToNow(new Date(n.createdAt), {
                   addSuffix: true,
-                  locale: ar,
+                  locale: currentLanguage === "ar" ? ar : enUS,
                 });
                 return (
                   <button
@@ -195,19 +200,54 @@ function ThemeToggle() {
   );
 }
 
+function LanguageToggle() {
+  const { currentLanguage, changeLanguage } = useT();
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => changeLanguage(currentLanguage === "ar" ? "en" : "ar")}
+      title={currentLanguage === "ar" ? "Switch to English" : "التبديل إلى العربية"}
+      id="lang-toggle-btn"
+    >
+      <Languages className="h-5 w-5" />
+    </Button>
+  );
+}
+
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { t, currentLanguage } = useT();
   const displayName = user?.profile?.first_name
     ? `${user.profile.first_name}${user.profile.last_name ? " " + user.profile.last_name : ""}`
-    : (user?.email ?? "بصمة+");
+    : (user?.email ?? t("app.name"));
+
+  const adminNav = user?.role === "ADMIN"
+    ? [{ to: "/admin" as const, label: t("nav.adminPanel"), icon: Shield }]
+    : [];
+
+  const nav = [
+    ...adminNav,
+    { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { to: "/ai-coach", label: t("nav.aiCoach"), icon: Bot },
+    { to: "/planner", label: t("nav.planner"), icon: CalendarDays },
+    { to: "/challenges", label: t("nav.challenges"), icon: Trophy },
+    { to: "/learning-hub", label: t("nav.learningHub"), icon: GraduationCap },
+    { to: "/digital-health", label: t("nav.digitalHealth"), icon: Activity },
+    { to: "/mood", label: t("nav.mood"), icon: Smile },
+    { to: "/goals", label: t("nav.goals"), icon: Target },
+    { to: "/achievements", label: t("nav.achievements"), icon: Award },
+    { to: "/weekly-report", label: t("nav.weeklyReport"), icon: FileBarChart },
+    { to: "/profile", label: t("nav.profile"), icon: UserCircle },
+  ] as const;
   return (
     <div className="flex h-full flex-col">
       <Link to="/dashboard" className="flex items-center gap-3 px-6 py-6">
         <img src="/logo-icon.png" alt="بصمة+" className="h-10 w-10 object-contain" />
         <div>
           <div className="text-lg font-bold text-foreground">بصمة+</div>
-          <div className="text-xs text-muted-foreground">رفيقك الذكي</div>
+          <div className="text-xs text-muted-foreground">{currentLanguage === "ar" ? "رفيقك الذكي" : "Your smart companion"}</div>
         </div>
       </Link>
       <nav className="flex-1 space-y-1 px-3">
@@ -236,7 +276,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           );
         })}
       </nav>
-      <div className="border-t p-4">
+      <div className="border-t p-4 space-y-2">
         <div className="flex items-center gap-3 rounded-lg bg-muted/50 p-3">
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary text-primary-foreground">
@@ -244,12 +284,27 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <div className="truncate text-sm font-semibold">{displayName}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="truncate text-sm font-semibold">{displayName}</div>
+              {user?.role === "ADMIN" && (
+                <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-600 dark:text-amber-400 leading-none">
+                  {t("admin.badge")}
+                </span>
+              )}
+            </div>
             <div className="truncate text-xs text-muted-foreground">
-              المستوى {Math.floor((user?.profile?.points ?? 0) / 300) + 1}
+              {currentLanguage === "ar" ? `المستوى ${Math.floor((user?.profile?.points ?? 0) / 300) + 1}` : `Level ${Math.floor((user?.profile?.points ?? 0) / 300) + 1}`}
             </div>
           </div>
         </div>
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          onClick={() => logout.mutate()}
+        >
+          <LogOut className="h-4 w-4" />
+          {t("nav.logout")}
+        </Button>
       </div>
     </div>
   );
@@ -266,13 +321,14 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const { currentLanguage } = useT();
   return (
     <div className="min-h-screen bg-background">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:right-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
-        تخطّى إلى المحتوى الرئيسي
+        {currentLanguage === "ar" ? "تخطّى إلى المحتوى الرئيسي" : "Skip to main content"}
       </a>
       {/* Desktop sidebar (right side in RTL) */}
       <aside className="fixed inset-y-0 right-0 hidden w-64 border-l bg-sidebar lg:block">
@@ -302,6 +358,7 @@ export function AppShell({
           </div>
           <div className="flex items-center gap-2">
             {actions}
+            <LanguageToggle />
             <ThemeToggle />
             <NotificationBell />
           </div>

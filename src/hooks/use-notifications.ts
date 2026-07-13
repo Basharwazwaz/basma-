@@ -1,9 +1,11 @@
+import { useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   apiGetNotifications,
   apiMarkNotificationRead,
   apiMarkAllNotificationsRead,
 } from "@/lib/api";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 export type NotificationType = "reminder" | "insight" | "challenge" | "system";
 
@@ -24,10 +26,15 @@ export function useNotifications() {
   const { data: serverNotifications = [], isLoading } = useQuery({
     queryKey: NOTIFICATIONS_QUERY_KEY,
     queryFn: () => apiGetNotifications(),
-    refetchInterval: 60000, // refresh every minute
+    refetchInterval: 60000,
   });
 
-  // Map backend format to frontend format
+  const handleWsMessage = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_QUERY_KEY });
+  }, [queryClient]);
+
+  useWebSocket(handleWsMessage);
+
   const notifications: AppNotification[] = serverNotifications.map(
     (n: import("@/lib/api").NotificationData) => ({
       id: n.id,

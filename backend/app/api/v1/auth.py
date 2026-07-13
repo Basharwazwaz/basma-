@@ -87,6 +87,8 @@ async def register(request: Request, user_in: UserCreate, db: AsyncSession = Dep
         user_id=user.id,
         first_name=user_in.first_name,
         last_name=user_in.last_name,
+        gender=user_in.gender,
+        major=user_in.education_level,
     )
     db.add(profile)
     await db.commit()
@@ -165,11 +167,7 @@ async def refresh_access_token(
         raise HTTPException(status_code=401, detail="Invalid token payload")
 
     # Check user exists and is active
-    try:
-        uid = _uuid.UUID(user_id)
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=401, detail="Invalid token payload")
-    user_result = await db.execute(select(Users).where(Users.id == uid))
+    user_result = await db.execute(select(Users).where(Users.id == user_id))
     user = user_result.scalars().first()
     if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or deactivated")

@@ -57,7 +57,7 @@ async def generate_study_plan(
         select(Tasks).where(
             Tasks.user_id == user_id,
             Tasks.is_completed == False,
-        ).order_by(Tasks.due_date.asc().nullslast())
+        ).order_by(Tasks.due_date.asc())
     )
     pending_tasks = tasks_result.scalars().all()
 

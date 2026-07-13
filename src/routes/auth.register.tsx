@@ -75,6 +75,8 @@ function Register() {
         password,
         first_name: firstName || undefined,
         last_name: lastName || undefined,
+        gender: gender || undefined,
+        education_level: level || undefined,
       });
       toast.success("تم إنشاء الحساب! 🎉", {
         description: "سجّل دخولك للمتابعة.",

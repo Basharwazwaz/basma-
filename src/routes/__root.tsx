@@ -4,15 +4,18 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useNavigate,
   HeadContent,
   Scripts,
   redirect,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Toaster } from "sonner";
+import { useTranslation } from "react-i18next";
 
 import appCss from "../styles.css?url";
 import { tokenStore } from "@/lib/api";
+import "../i18n/config";
 
 const PUBLIC_ROUTES = new Set([
   "/",
@@ -82,6 +85,8 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   beforeLoad: ({ location }) => {
+    // Skip auth check on the server (no sessionStorage / cookies available)
+    if (typeof window === "undefined") return;
     if (PUBLIC_ROUTES.has(location.pathname)) return;
     if (!tokenStore.get()) {
       throw redirect({ to: "/auth/login" });
@@ -131,8 +136,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const { i18n } = useTranslation();
+  const lang = i18n.language?.startsWith("ar") ? "ar" : "en";
   return (
-    <html lang="ar" dir="rtl">
+    <html lang={lang} dir={lang === "ar" ? "rtl" : "ltr"} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
@@ -146,6 +153,16 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    if (PUBLIC_ROUTES.has(path)) return;
+    if (!tokenStore.get()) {
+      navigate({ to: "/auth/login" });
+    }
+  }, []);
 
   useEffect(() => {
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
@@ -157,7 +174,6 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
       <Outlet />
       <Toaster position="bottom-center" dir="rtl" className="font-sans" />
     </QueryClientProvider>

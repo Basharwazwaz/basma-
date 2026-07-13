@@ -52,7 +52,7 @@ async def enroll_in_challenge(
 
 @router.put("/challenges/{user_challenge_id}", response_model=UserChallengeResponse)
 async def update_challenge_progress(
-    user_challenge_id: uuid.UUID,
+    user_challenge_id: str,
     update_in: UserChallengeUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
@@ -65,7 +65,7 @@ async def update_challenge_progress(
 
 @router.post("/challenges/{user_challenge_id}/checkin", response_model=UserChallengeResponse)
 async def checkin_challenge(
-    user_challenge_id: uuid.UUID,
+    user_challenge_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):

@@ -46,7 +46,7 @@ async def get_bookmarked_content(
 
 @router.get("/{content_id}", response_model=LearningContentResponse)
 async def get_content(
-    content_id: uuid.UUID,
+    content_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -59,7 +59,7 @@ async def get_content(
 
 @router.post("/{content_id}/interact")
 async def interact_with_content(
-    content_id: uuid.UUID,
+    content_id: str,
     interaction_in: ContentInteractionCreate,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
@@ -73,7 +73,7 @@ async def interact_with_content(
 
 @router.get("/{content_id}/interactions", response_model=List[ContentInteractionResponse])
 async def get_content_interactions(
-    content_id: uuid.UUID,
+    content_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
@@ -83,7 +83,7 @@ async def get_content_interactions(
 
 @router.delete("/recommendations/{recommendation_id}/dismiss", response_model=RecommendationResponse)
 async def dismiss_recommendation(
-    recommendation_id: uuid.UUID,
+    recommendation_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):

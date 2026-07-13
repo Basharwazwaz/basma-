@@ -1,8 +1,6 @@
 from typing import Literal, Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
-import uuid
-
 # --- Challenges ---
 
 class ChallengeBase(BaseModel):
@@ -13,7 +11,7 @@ class ChallengeBase(BaseModel):
     points_reward: int = Field(0, ge=0)
 
 class ChallengeResponse(ChallengeBase):
-    id: uuid.UUID
+    id: str
     created_at: datetime
 
     class Config:
@@ -22,19 +20,19 @@ class ChallengeResponse(ChallengeBase):
 # --- User Challenges ---
 
 class UserChallengeBase(BaseModel):
-    challenge_id: uuid.UUID
+    challenge_id: str
     status: Literal["ACTIVE", "COMPLETED", "FAILED"] = Field("ACTIVE", description="ACTIVE, COMPLETED, FAILED")
     progress_days: int = Field(0, ge=0)
 
 class UserChallengeCreate(BaseModel):
-    challenge_id: uuid.UUID
+    challenge_id: str
 
 class UserChallengeUpdate(BaseModel):
     status: Optional[Literal["ACTIVE", "COMPLETED", "FAILED"]] = None
 
 class UserChallengeResponse(UserChallengeBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     started_at: datetime
     completed_at: Optional[datetime] = None
     last_checkin: Optional[datetime] = None
@@ -54,8 +52,8 @@ class AchievementCreate(AchievementBase):
     pass
 
 class AchievementResponse(AchievementBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     earned_at: datetime
 
     class Config:

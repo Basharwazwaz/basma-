@@ -162,7 +162,7 @@ function Challenges() {
         </div>
       ) : isUserError ? (
         <div className="py-4 text-center text-sm text-destructive">
-          فшибка في تحميل تحدياتك. حاول لاحقاً.
+          فشل في تحميل تحدياتك. حاول لاحقاً.
         </div>
       ) : (
         activeEnrolled.length > 0 && (
@@ -252,7 +252,7 @@ function Challenges() {
         </div>
       ) : isAllError ? (
         <div className="py-10 text-center text-sm text-destructive">
-          فшибка في تحميل التحديات. حاول لاحقاً.
+          فشل في تحميل التحديات. حاول لاحقاً.
         </div>
       ) : (
         <Tabs defaultValue="all">

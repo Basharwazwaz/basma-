@@ -50,6 +50,8 @@ async def create_or_update_mood(
     else:
         db_mood = Mood(user_id=user_id, **mood_in.model_dump())
         db.add(db_mood)
+        from app.services.points_service import add_points
+        await add_points(db, user_id, 2, "تسجيل المزاج اليومي")
 
     await db.commit()
     await db.refresh(db_mood)

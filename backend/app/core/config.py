@@ -3,7 +3,7 @@ import json
 import secrets
 from typing import List, Union, Optional
 
-from pydantic import PostgresDsn, computed_field, field_validator, model_validator
+from pydantic import computed_field, field_validator, model_validator
 from pydantic_core import MultiHostUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -31,21 +31,22 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "production"
 
     # Database
-    POSTGRES_SERVER: str = "localhost"
-    POSTGRES_USER: str = "postgres"
-    POSTGRES_PASSWORD: str = "postgres"
-    POSTGRES_DB: str = "basma_db"
+    MYSQL_SERVER: str = "localhost"
+    MYSQL_USER: str = "root"
+    MYSQL_PASSWORD: str = ""
+    MYSQL_DB: str = "basma_db"
+    MYSQL_PORT: int = 3306
     
     @computed_field
     @property
-    def SQLALCHEMY_DATABASE_URI(self) -> PostgresDsn:
+    def SQLALCHEMY_DATABASE_URI(self) -> str:
         return MultiHostUrl.build(
-            scheme="postgresql+asyncpg",
-            username=self.POSTGRES_USER,
-            password=self.POSTGRES_PASSWORD,
-            host=self.POSTGRES_SERVER,
-            port=5432,
-            path=self.POSTGRES_DB,
+            scheme="mysql+aiomysql",
+            username=self.MYSQL_USER,
+            password=self.MYSQL_PASSWORD,
+            host=self.MYSQL_SERVER,
+            port=self.MYSQL_PORT,
+            path=self.MYSQL_DB,
         )
 
     # JWT Settings
@@ -78,8 +79,8 @@ class Settings(BaseSettings):
                     "SECRET_KEY must be changed from the default in production. "
                     "Generate one with: python -c \"import secrets; print(secrets.token_hex(32))\""
                 )
-            # Auto-generate a random key for development
-            self.SECRET_KEY = secrets.token_hex(32)
+            # Stable dev key so tokens survive server restarts
+            self.SECRET_KEY = "dev-secret-key-that-is-fixed-for-development-1234567890"
         return self
 
     model_config = SettingsConfigDict(

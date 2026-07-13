@@ -127,6 +127,11 @@ async def checkin_user_challenge(
     if challenge and db_uchallenge.progress_days >= challenge.duration_days:
         db_uchallenge.status = "COMPLETED"
         db_uchallenge.completed_at = now
+        from app.services.points_service import add_points
+        await add_points(db, user_id, 50, f"إكمال التحدي: {challenge.title}")
+
+    from app.services.points_service import add_points
+    await add_points(db, user_id, 5, "تسجيل حضور يومي في التحدي")
 
     await db.commit()
     await db.refresh(db_uchallenge, ["challenge"])
@@ -166,6 +171,9 @@ async def award_achievement(
         icon=icon,
     )
     db.add(achievement)
+    from app.services.points_service import add_points
+    await add_points(db, user_id, 15, f"الحصول على وسام: {title}")
+
     await db.commit()
     await db.refresh(achievement)
     return achievement

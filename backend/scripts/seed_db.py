@@ -7,7 +7,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import AsyncSessionLocal
+from app.db.session import _get_session_local
 from app.models.gamification import Challenges
 from app.models.content import LearningContent
 
@@ -116,7 +116,7 @@ async def seed_data(db: AsyncSession):
     print("Database seeded successfully.")
 
 async def main():
-    async with AsyncSessionLocal() as session:
+    async with _get_session_local()() as session:
         await seed_data(session)
 
 if __name__ == "__main__":

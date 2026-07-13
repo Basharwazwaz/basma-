@@ -20,6 +20,7 @@ import { Route as DigitalHealthRouteImport } from './routes/digital-health'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ChallengesRouteImport } from './routes/challenges'
 import { Route as AiCoachRouteImport } from './routes/ai-coach'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AchievementsRouteImport } from './routes/achievements'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -83,6 +84,11 @@ const AiCoachRoute = AiCoachRouteImport.update({
   path: '/ai-coach',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AchievementsRoute = AchievementsRouteImport.update({
   id: '/achievements',
   path: '/achievements',
@@ -122,6 +128,7 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/achievements': typeof AchievementsRoute
+  '/admin': typeof AdminRoute
   '/ai-coach': typeof AiCoachRoute
   '/challenges': typeof ChallengesRoute
   '/dashboard': typeof DashboardRoute
@@ -142,6 +149,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/achievements': typeof AchievementsRoute
+  '/admin': typeof AdminRoute
   '/ai-coach': typeof AiCoachRoute
   '/challenges': typeof ChallengesRoute
   '/dashboard': typeof DashboardRoute
@@ -163,6 +171,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/achievements': typeof AchievementsRoute
+  '/admin': typeof AdminRoute
   '/ai-coach': typeof AiCoachRoute
   '/challenges': typeof ChallengesRoute
   '/dashboard': typeof DashboardRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/achievements'
+    | '/admin'
     | '/ai-coach'
     | '/challenges'
     | '/dashboard'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/achievements'
+    | '/admin'
     | '/ai-coach'
     | '/challenges'
     | '/dashboard'
@@ -225,6 +236,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/achievements'
+    | '/admin'
     | '/ai-coach'
     | '/challenges'
     | '/dashboard'
@@ -246,6 +258,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AchievementsRoute: typeof AchievementsRoute
+  AdminRoute: typeof AdminRoute
   AiCoachRoute: typeof AiCoachRoute
   ChallengesRoute: typeof ChallengesRoute
   DashboardRoute: typeof DashboardRoute
@@ -343,6 +356,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AiCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/achievements': {
       id: '/achievements'
       path: '/achievements'
@@ -398,6 +418,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AchievementsRoute: AchievementsRoute,
+  AdminRoute: AdminRoute,
   AiCoachRoute: AiCoachRoute,
   ChallengesRoute: ChallengesRoute,
   DashboardRoute: DashboardRoute,

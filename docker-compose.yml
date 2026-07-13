@@ -2,18 +2,20 @@ version: "3.9"
 
 services:
   db:
-    image: postgres:15-alpine
+    image: mysql:8.0
     restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: basma_db
-    ports: []
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: basma_db
+      MYSQL_USER: basma
+      MYSQL_PASSWORD: basma
+    ports:
+      - "3306:3306"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mysqldata:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
+      interval: 10s
       timeout: 5s
       retries: 5
 
@@ -27,10 +29,11 @@ services:
     environment:
       - ENVIRONMENT=development
       - DEBUG=true
-      - POSTGRES_SERVER=db
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=basma_db
+      - MYSQL_SERVER=db
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DB=basma_db
+      - MYSQL_PORT=3306
       - SECRET_KEY=dev-secret-key-change-in-production
       - FRONTEND_URL=http://localhost:8080
       - BACKEND_CORS_ORIGINS=["http://localhost:8080","http://localhost:5173"]
@@ -47,14 +50,11 @@ services:
       dockerfile: Dockerfile.frontend
     restart: unless-stopped
     ports:
-      - "8080:3000"
+      - "8080:8080"
     environment:
-      - PORT=3000
-      - NITRO_PORT=3000
-      - HOST=0.0.0.0
-      - BACKEND_URL=http://backend:8000
+      - VITE_API_URL=http://localhost:8000/api/v1
     depends_on:
       - backend
 
 volumes:
-  pgdata:
+  mysqldata:

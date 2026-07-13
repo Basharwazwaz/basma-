@@ -1,6 +1,5 @@
-import uuid
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 from pydantic import BaseModel, ConfigDict
 
 
@@ -11,6 +10,19 @@ class LearningContentBase(BaseModel):
     url: Optional[str] = None
     category: Optional[str] = None
     estimated_minutes: Optional[int] = None
+    tags: Optional[Any] = None
+    difficulty: Optional[str] = None
+
+
+class ContentCreate(LearningContentBase):
+    pass
+
+
+class ContentResponse(LearningContentBase):
+    id: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LearningContentCreate(LearningContentBase):
@@ -18,7 +30,7 @@ class LearningContentCreate(LearningContentBase):
 
 
 class LearningContentResponse(LearningContentBase):
-    id: uuid.UUID
+    id: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -30,14 +42,14 @@ class RecommendationBase(BaseModel):
 
 
 class RecommendationCreate(RecommendationBase):
-    user_id: uuid.UUID
-    content_id: uuid.UUID
+    user_id: str
+    content_id: str
 
 
 class RecommendationResponse(RecommendationBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
-    content_id: uuid.UUID
+    id: str
+    user_id: str
+    content_id: str
     content: LearningContentResponse
     created_at: datetime
 

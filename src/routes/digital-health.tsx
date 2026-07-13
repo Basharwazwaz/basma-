@@ -71,7 +71,7 @@ function DH() {
         </div>
       ) : isError ? (
         <Card className="p-10 text-center text-sm text-destructive">
-          فшибка في تحميل البيانات. حاول لاحقاً.
+          فشل في تحميل البيانات. حاول لاحقاً.
         </Card>
       ) : (
         <>

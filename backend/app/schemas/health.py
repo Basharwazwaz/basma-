@@ -1,8 +1,6 @@
 from typing import Literal, Optional, List
 from datetime import date, datetime
 from pydantic import BaseModel, Field
-import uuid
-
 # --- Mood ---
 
 class MoodBase(BaseModel):
@@ -22,8 +20,8 @@ class MoodUpdate(BaseModel):
     note: Optional[str] = Field(None, max_length=500)
 
 class MoodResponse(MoodBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     created_at: datetime
 
     class Config:
@@ -46,8 +44,8 @@ class DigitalHabitsUpdate(BaseModel):
     sleep_minutes: Optional[int] = Field(None, ge=0)
 
 class DigitalHabitsResponse(DigitalHabitsBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     created_at: datetime
 
     class Config:

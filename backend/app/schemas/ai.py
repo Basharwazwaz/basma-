@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime, date
 from typing import Optional, Dict, Any, List
 from pydantic import BaseModel, ConfigDict
@@ -37,8 +36,8 @@ class InsightResponse(BaseModel):
 # --- Weekly Report ---
 
 class WeeklyReportGenerateResponse(BaseModel):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     start_date: date
     end_date: date
     metrics_summary: Optional[Dict[str, Any]] = None
@@ -70,9 +69,9 @@ class ContentInteractionCreate(BaseModel):
 
 
 class ContentInteractionResponse(BaseModel):
-    id: uuid.UUID
-    user_id: uuid.UUID
-    content_id: uuid.UUID
+    id: str
+    user_id: str
+    content_id: str
     interaction_type: str
     created_at: datetime
 

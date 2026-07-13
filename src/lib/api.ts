@@ -2,28 +2,52 @@
  * api.ts — thin wrapper around fetch() for the Basma+ backend.
  *
  * Strategy:
- *  - Access token is stored in memory (not localStorage) to reduce XSS risk.
+ *  - Access token is stored in sessionStorage so login survives page reloads
+ *    (cleared when the tab/browser is closed).
  *  - The refresh token lives in an HttpOnly cookie — the browser sends it
- *    automatically to POST /auth/refresh.
+ *    automatically to POST /auth/refresh as a fallback.
  *  - On a 401 the client tries one refresh cycle then retries the original
  *    request.  If the refresh also fails, the user is signed out.
  */
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 
+const SESSION_KEY = "basma-access-token";
+
 // ──────────────────────────────────────────────────────────────────
-// In-memory token store
+// sessionStorage-backed token store  (survives page reloads)
 // ──────────────────────────────────────────────────────────────────
 
-let _accessToken: string | null = null;
+function _readToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function _writeToken(t: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (t) sessionStorage.setItem(SESSION_KEY, t);
+    else sessionStorage.removeItem(SESSION_KEY);
+  } catch {
+    /* noop */
+  }
+}
+
+let _accessToken: string | null = _readToken();
 
 export const tokenStore = {
   get: () => _accessToken,
   set: (t: string | null) => {
     _accessToken = t;
+    _writeToken(t);
   },
   clear: () => {
     _accessToken = null;
+    _writeToken(null);
   },
 };
 
@@ -77,7 +101,7 @@ export async function apiFetch<T = unknown>(
 
   // ── 401 → try to refresh, then retry once ────────────────────────
   if (response.status === 401 && !_retry) {
-    const refreshed = await _refreshAccessToken();
+    const refreshed = await apiRefreshToken();
     if (refreshed) {
       return apiFetch<T>(path, { ...options, _retry: true });
     }
@@ -108,7 +132,7 @@ export async function apiFetch<T = unknown>(
 // Refresh helper
 // ──────────────────────────────────────────────────────────────────
 
-async function _refreshAccessToken(): Promise<boolean> {
+export async function apiRefreshToken(): Promise<boolean> {
   try {
     const response = await fetch(`${BASE_URL}/auth/refresh`, {
       method: "POST",
@@ -657,6 +681,80 @@ export async function apiDismissRecommendation(id: string): Promise<Recommendati
   return apiFetch<RecommendationData>(`/content/recommendations/${id}/dismiss`, {
     method: "PUT",
   });
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Admin helpers
+// ──────────────────────────────────────────────────────────────────
+
+export interface AdminUserData {
+  id: string;
+  email: string;
+  role: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export async function apiAdminGetUsers(): Promise<AdminUserData[]> {
+  return apiFetch<AdminUserData[]>("/admin/users");
+}
+
+export async function apiAdminGetUserCount(): Promise<{ total_users: number }> {
+  return apiFetch<{ total_users: number }>("/admin/users/count");
+}
+
+export async function apiAdminDeactivateUser(userId: string): Promise<void> {
+  await apiFetch(`/admin/users/${userId}/deactivate`, { method: "PUT" });
+}
+
+export interface AdminContentData {
+  id: string;
+  title: string;
+  description: string | null;
+  content_type: string;
+  url: string | null;
+  category: string | null;
+  difficulty: string | null;
+  estimated_minutes: number | null;
+  tags: unknown;
+  created_at: string;
+}
+
+export interface AdminContentPayload {
+  title: string;
+  description?: string;
+  content_type: string;
+  url?: string;
+  category?: string;
+  difficulty?: string;
+  estimated_minutes?: number;
+  tags?: unknown;
+}
+
+export async function apiAdminGetContent(): Promise<AdminContentData[]> {
+  return apiFetch<AdminContentData[]>("/admin/content");
+}
+
+export async function apiAdminCreateContent(payload: AdminContentPayload): Promise<AdminContentData> {
+  return apiFetch<AdminContentData>("/admin/content", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function apiAdminUpdateContent(id: string, payload: AdminContentPayload): Promise<AdminContentData> {
+  return apiFetch<AdminContentData>(`/admin/content/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function apiAdminDeleteContent(id: string): Promise<void> {
+  await apiFetch(`/admin/content/${id}`, { method: "DELETE" });
+}
+
+export async function apiAdminSeedContent(): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/admin/content/seed", { method: "POST" });
 }
 
 // ──────────────────────────────────────────────────────────────────

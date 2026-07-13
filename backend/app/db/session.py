@@ -1,25 +1,36 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.config import settings
 
-# Create async engine for PostgreSQL
-engine = create_async_engine(
-    str(settings.SQLALCHEMY_DATABASE_URI),
-    echo=settings.DEBUG,
-    future=True,
-    pool_pre_ping=True,
-)
+_engine = None
+_async_session_local = None
 
-# Async session factory
-AsyncSessionLocal = async_sessionmaker(
-    bind=engine,
-    autocommit=False,
-    autoflush=False,
-    expire_on_commit=False,
-)
+
+def _get_engine():
+    global _engine
+    if _engine is None:
+        _engine = create_async_engine(
+            str(settings.SQLALCHEMY_DATABASE_URI),
+            echo=settings.DEBUG,
+            future=True,
+        )
+    return _engine
+
+
+def _get_session_local():
+    global _async_session_local
+    if _async_session_local is None:
+        _async_session_local = async_sessionmaker(
+            bind=_get_engine(),
+            autocommit=False,
+            autoflush=False,
+            expire_on_commit=False,
+        )
+    return _async_session_local
+
 
 async def get_db():
     """
     Dependency function to get async database session.
     """
-    async with AsyncSessionLocal() as session:
+    async with _get_session_local()() as session:
         yield session

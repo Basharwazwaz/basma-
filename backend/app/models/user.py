@@ -3,23 +3,20 @@ import sqlalchemy
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from sqlalchemy import String, Boolean, DateTime, Integer, Text
-from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM, ARRAY
+from sqlalchemy import String, Boolean, DateTime, Integer, Text, JSON, Enum as SA_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base_class import Base
 
 
 class Users(Base):
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     email: Mapped[str] = mapped_column(
         String(255), unique=True, index=True, nullable=False
     )
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(
-        PG_ENUM("ADMIN", "USER", name="role_enum", create_type=False), default="USER"
+        SA_ENUM("ADMIN", "USER", name="role_enum", create_type=False), default="USER"
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -78,15 +75,8 @@ class Users(Base):
 
 
 class Profiles(Base):
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, index=True
-    )
-    user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"),
-        unique=True,
-        index=True,
-    )
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
+    user_id: Mapped[str] = mapped_column(String(36), sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
 
     # ── Personal Info ──────────────────────────────────────────────────────
     first_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
@@ -105,10 +95,8 @@ class Profiles(Base):
     points: Mapped[int] = mapped_column(Integer, default=0)
 
     # ── Interests (Phase 4) ─────────────────────────────────────────────────
-    # Stored as a native PostgreSQL TEXT[] array — no join table needed
-    interests: Mapped[Optional[List[str]]] = mapped_column(
-        ARRAY(Text), nullable=True, default=list
-    )
+    # Stored as a JSON array — no join table needed
+    interests: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=list)
 
     # ── Settings (Phase 4) ──────────────────────────────────────────────────
     language: Mapped[str] = mapped_column(String(5), nullable=False, default="ar")

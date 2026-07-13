@@ -1,30 +1,47 @@
 """
 Content Recommendation Engine
 Recommends learning content based on user interests, goals, and interaction history.
-Uses tag matching, category preference, and interaction signals.
+Uses TF-IDF cosine similarity from scikit-learn for semantic tag matching.
 """
-
-import uuid
 import json
+import os
+import pickle
 from dataclasses import dataclass
 from typing import List, Optional
 
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.models.content import LearningContent, Recommendations, UserContentInteraction
 from app.models.user import Profiles
 
+VECTORIZER_PATH = os.path.join(os.path.dirname(__file__), "trained", "recommender_vectorizer.pkl")
+
+_vectorizer_cache = None
+
+
+def _load_vectorizer():
+    global _vectorizer_cache
+    if _vectorizer_cache is not None:
+        return _vectorizer_cache
+    try:
+        with open(VECTORIZER_PATH, "rb") as f:
+            _vectorizer_cache = pickle.load(f)
+        return _vectorizer_cache
+    except (FileNotFoundError, pickle.UnpicklingError, EOFError):
+        return None
+
 
 @dataclass
 class RecommendationItem:
-    content_id: uuid.UUID
+    content_id: str
     score: float
     reason: str
 
 
-async def get_user_interests(db: AsyncSession, user_id: uuid.UUID) -> dict:
-    """Extract user interests and preferences from their profile."""
+async def get_user_interests(db: AsyncSession, user_id: str) -> dict:
     result = await db.execute(
         select(Profiles).where(Profiles.user_id == user_id)
     )
@@ -32,7 +49,13 @@ async def get_user_interests(db: AsyncSession, user_id: uuid.UUID) -> dict:
 
     interests = []
     if profile and profile.interests:
-        interests = profile.interests if isinstance(profile.interests, list) else []
+        if isinstance(profile.interests, list):
+            interests = profile.interests
+        elif isinstance(profile.interests, str):
+            try:
+                interests = json.loads(profile.interests)
+            except (json.JSONDecodeError, TypeError):
+                interests = [t.strip() for t in profile.interests.split(",")]
 
     return {
         "interests": interests,
@@ -40,8 +63,7 @@ async def get_user_interests(db: AsyncSession, user_id: uuid.UUID) -> dict:
     }
 
 
-async def get_user_interactions(db: AsyncSession, user_id: uuid.UUID) -> dict:
-    """Get user's past content interactions."""
+async def get_user_interactions(db: AsyncSession, user_id: str) -> dict:
     result = await db.execute(
         select(UserContentInteraction).where(UserContentInteraction.user_id == user_id)
     )
@@ -62,30 +84,33 @@ async def get_user_interactions(db: AsyncSession, user_id: uuid.UUID) -> dict:
         elif i.interaction_type == "bookmark":
             bookmarked.add(i.content_id)
 
-    return {
-        "viewed": viewed,
-        "liked": liked,
-        "completed": completed,
-        "bookmarked": bookmarked,
-    }
+    return {"viewed": viewed, "liked": liked, "completed": completed, "bookmarked": bookmarked}
+
+
+def _extract_tags(content: LearningContent) -> List[str]:
+    if not content.tags:
+        return []
+    if isinstance(content.tags, list):
+        return content.tags
+    if isinstance(content.tags, str):
+        try:
+            parsed = json.loads(content.tags)
+            return parsed if isinstance(parsed, list) else [t.strip() for t in content.tags.split(",")]
+        except (json.JSONDecodeError, TypeError):
+            return [t.strip() for t in content.tags.split(",")]
+    return []
 
 
 def _compute_content_score(
     content: LearningContent,
+    content_tags: List[str],
+    user_text: str,
     interests: List[str],
     interactions: dict,
+    vectorizer_data: Optional[dict],
 ) -> tuple[float, str]:
-    """Compute a relevance score for a content item against user profile."""
     score = 0.0
     reasons = []
-
-    # Tag matching (0-40 points)
-    content_tags = []
-    if content.tags:
-        try:
-            content_tags = json.loads(content.tags) if isinstance(content.tags, str) else content.tags
-        except (json.JSONDecodeError, TypeError):
-            content_tags = [t.strip() for t in content.tags.split(",")] if content.tags else []
 
     tag_overlap = len(set(interests) & set(content_tags))
     if tag_overlap > 0:
@@ -93,7 +118,6 @@ def _compute_content_score(
         score += tag_score
         reasons.append(f"يتوافق مع اهتماماتك ({tag_overlap} تطابق)")
 
-    # Category matching with major (0-20 points)
     if content.category:
         category_lower = content.category.lower()
         for interest in interests:
@@ -102,18 +126,28 @@ def _compute_content_score(
                 reasons.append(f"متعلق بـ {content.category}")
                 break
 
-    # Novelty bonus — content not yet viewed (0-20 points)
+    if vectorizer_data and content_tags:
+        try:
+            vectorizer = vectorizer_data["vectorizer"]
+            content_vec = vectorizer.transform([" ".join(content_tags)])
+            user_vec = vectorizer.transform([user_text])
+            sim = cosine_similarity(content_vec, user_vec)[0][0]
+            semantic_score = int(sim * 25)
+            if semantic_score > 5:
+                score += semantic_score
+                reasons.append(f"تشابه دلالي {semantic_score}%")
+        except Exception:
+            pass
+
     if content.id not in interactions.get("viewed", set()):
-        score += 20
+        score += 15
         reasons.append("محتوى جديد لم تشاهده بعد")
-    
-    # Engagement bonus — liked/completed content signals preference (0-10 points)
+
     if content.id in interactions.get("liked", set()):
         score += 10
         reasons.append("أعجبك محتوى مشابه")
 
-    # Popularity heuristic (0-10 points) — newer content gets slight boost
-    score += 10
+    score += 5
 
     reason = reasons[0] if reasons else "محتوى مقترح لك"
     return min(100, score), reason
@@ -121,17 +155,12 @@ def _compute_content_score(
 
 async def generate_recommendations(
     db: AsyncSession,
-    user_id: uuid.UUID,
+    user_id: str,
     limit: int = 10,
 ) -> List[RecommendationItem]:
-    """
-    Generate personalized content recommendations.
-    Returns top-N content items ranked by relevance score.
-    """
     user_data = await get_user_interests(db, user_id)
     interactions = await get_user_interactions(db, user_id)
 
-    # Fetch all content
     content_result = await db.execute(
         select(LearningContent).order_by(LearningContent.created_at.desc())
     )
@@ -140,31 +169,39 @@ async def generate_recommendations(
     if not all_content:
         return []
 
-    # Score each content item
+    interests = user_data["interests"]
+    major = user_data["major"]
+    user_text_parts = list(interests)
+    if major:
+        user_text_parts.append(major)
+    user_text = " ".join(user_text_parts)
+
+    vectorizer_data = _load_vectorizer()
+
     scored: List[RecommendationItem] = []
     for content in all_content:
-        # Skip already completed content
         if content.id in interactions.get("completed", set()):
             continue
 
-        score, reason = _compute_content_score(content, user_data["interests"], interactions)
+        content_tags = _extract_tags(content)
+        score, reason = _compute_content_score(
+            content, content_tags, user_text, interests, interactions, vectorizer_data,
+        )
         scored.append(RecommendationItem(
             content_id=content.id,
             score=score,
             reason=reason,
         ))
 
-    # Sort by score descending
     scored.sort(key=lambda x: x.score, reverse=True)
     return scored[:limit]
 
 
 async def save_recommendations(
     db: AsyncSession,
-    user_id: uuid.UUID,
+    user_id: str,
     recommendations: List[RecommendationItem],
 ) -> List[Recommendations]:
-    """Persist generated recommendations to the database."""
     saved = []
     for rec in recommendations:
         db_rec = Recommendations(

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { X, Loader2 } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { useT } from "@/i18n/use-t";
 import {
   apiUpdateProfile,
   apiUpdateSettings,
@@ -76,6 +77,7 @@ function Profile() {
   const { user, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { t, currentLanguage, changeLanguage } = useT();
 
   // ── Derive initial form state from server data ─────────────────
   const profile = user?.profile;
@@ -169,6 +171,7 @@ function Profile() {
   };
 
   const handleLanguageChange = (lang: string) => {
+    changeLanguage(lang);
     updateSettingsMutation.mutate({ language: lang });
   };
 
@@ -183,7 +186,7 @@ function Profile() {
   if (isLoading) return <ProfileSkeleton />;
 
   return (
-    <AppShell title="الملف الشخصي" subtitle="إدارة بياناتك وتفضيلاتك.">
+    <AppShell title={t("profile.title")} subtitle={currentLanguage === "ar" ? "إدارة بياناتك وتفضيلاتك." : "Manage your data and preferences."}>
       <div className="grid gap-6 lg:grid-cols-3">
         {/* ── Left / main card ─────────────────────────────────── */}
         <Card className="p-6 lg:col-span-2">
@@ -375,8 +378,8 @@ function Profile() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ar">العربية</SelectItem>
-                    <SelectItem value="en">English (قريبًا)</SelectItem>
+                  <SelectItem value="ar">العربية</SelectItem>
+                  <SelectItem value="en">English</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

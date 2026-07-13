@@ -126,7 +126,7 @@ function Ach() {
           </div>
         ) : isAchError ? (
           <div className="col-span-full py-10 text-center text-sm text-destructive">
-            فшибка في تحميل الشارات. حاول لاحقاً.
+            فشل في تحميل الشارات. حاول لاحقاً.
           </div>
         ) : earnedAchievements.length === 0 ? (
           <div className="col-span-full py-10 text-center text-sm text-muted-foreground">

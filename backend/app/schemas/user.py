@@ -1,9 +1,8 @@
-from uuid import UUID
 from pydantic import BaseModel, EmailStr, field_validator
 from datetime import datetime
 
 class UserResponse(BaseModel):
-    id: UUID
+    id: str
     email: EmailStr
     role: str
     is_active: bool
@@ -14,7 +13,7 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 class ProfileResponse(BaseModel):
-    id: UUID
+    id: str
     first_name: str | None = None
     last_name: str | None = None
     age: int | None = None
@@ -29,6 +28,8 @@ class UserCreate(BaseModel):
     password: str
     first_name: str | None = None
     last_name: str | None = None
+    gender: str | None = None
+    education_level: str | None = None
 
     @field_validator("password")
     @classmethod

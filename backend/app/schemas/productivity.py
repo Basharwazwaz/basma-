@@ -1,8 +1,6 @@
 from typing import Literal, Optional, List
 from datetime import date, datetime, time
 from pydantic import BaseModel, Field
-import uuid
-
 # --- Goals ---
 
 class GoalBase(BaseModel):
@@ -25,8 +23,8 @@ class GoalUpdate(BaseModel):
     progress_percent: Optional[int] = Field(None, ge=0, le=100)
 
 class GoalResponse(GoalBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -36,7 +34,7 @@ class GoalResponse(GoalBase):
 # --- Tasks ---
 
 class TaskBase(BaseModel):
-    goal_id: Optional[uuid.UUID] = None
+    goal_id: Optional[str] = None
     title: str = Field(..., max_length=200)
     is_completed: Optional[bool] = False
     status: Optional[Literal["PENDING", "IN_PROGRESS", "DONE"]] = Field("PENDING")
@@ -47,7 +45,7 @@ class TaskCreate(TaskBase):
     pass
 
 class TaskUpdate(BaseModel):
-    goal_id: Optional[uuid.UUID] = None
+    goal_id: Optional[str] = None
     title: Optional[str] = Field(None, max_length=200)
     is_completed: Optional[bool] = None
     status: Optional[Literal["PENDING", "IN_PROGRESS", "DONE"]] = None
@@ -55,8 +53,8 @@ class TaskUpdate(BaseModel):
     pomodoro_sessions: Optional[int] = Field(None, ge=0)
 
 class TaskResponse(TaskBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     created_at: datetime
     updated_at: datetime
 
@@ -83,8 +81,8 @@ class PlannerUpdate(BaseModel):
     is_completed: Optional[bool] = None
 
 class PlannerResponse(PlannerBase):
-    id: uuid.UUID
-    user_id: uuid.UUID
+    id: str
+    user_id: str
     created_at: datetime
 
     class Config:

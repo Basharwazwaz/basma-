@@ -51,6 +51,10 @@ async def update_goal(
     for field, value in goal_in.model_dump(exclude_unset=True).items():
         setattr(db_goal, field, value)
 
+    if db_goal.status == "COMPLETED":
+        from app.services.points_service import add_points
+        await add_points(db, user_id, 25, f"إنجاز الهدف: {db_goal.title}")
+
     await db.commit()
     await db.refresh(db_goal)
     return db_goal
@@ -134,6 +138,7 @@ async def update_task(
     # ── Achievement: first task completed ──────────────────────────────────
     if was_not_completed and db_task.is_completed:
         from app.services.gamification_service import award_achievement
+        from app.services.points_service import add_points
         # Check if user has any completed tasks (including this one)
         completed_count = await db.scalar(
             select(func.count(Tasks.id)).where(
@@ -148,6 +153,7 @@ async def update_task(
                 description="أكملت أول مهمة! استمر في الحفاظ على الإنتاجية.",
                 icon="✅",
             )
+        await add_points(db, user_id, 10, "إكمال مهمة")
 
     return db_task
 

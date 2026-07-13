@@ -27,7 +27,7 @@ async def get_notifications(
 
 @router.put("/{notification_id}/read", response_model=NotificationResponse)
 async def mark_notification_read(
-    notification_id: uuid.UUID,
+    notification_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
