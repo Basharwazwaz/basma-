@@ -69,6 +69,7 @@ class PlannerBase(BaseModel):
     start_time: Optional[time] = None
     end_time: Optional[time] = None
     is_completed: Optional[bool] = False
+    goal_id: Optional[str] = None
 
 class PlannerCreate(PlannerBase):
     pass
@@ -79,6 +80,7 @@ class PlannerUpdate(BaseModel):
     start_time: Optional[time] = None
     end_time: Optional[time] = None
     is_completed: Optional[bool] = None
+    goal_id: Optional[str] = None
 
 class PlannerResponse(PlannerBase):
     id: str

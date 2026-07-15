@@ -20,6 +20,7 @@ class Goals(Base):
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="goals")
     tasks: Mapped[list["Tasks"]] = relationship("Tasks", back_populates="goal", cascade="all, delete-orphan")
+    planner_items: Mapped[list["Planner"]] = relationship("Planner", back_populates="goal")
 
 class Tasks(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
@@ -40,6 +41,7 @@ class Tasks(Base):
 class Planner(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     user_id: Mapped[str] = mapped_column(String(36), sqlalchemy.ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    goal_id: Mapped[str] = mapped_column(String(36), sqlalchemy.ForeignKey("goals.id", ondelete="SET NULL"), nullable=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     plan_date: Mapped[date] = mapped_column(Date, index=True)
     start_time: Mapped[time] = mapped_column(Time, nullable=True)
@@ -49,3 +51,4 @@ class Planner(Base):
 
     # Relationships
     user: Mapped["Users"] = relationship("Users", back_populates="planner")
+    goal: Mapped["Goals"] = relationship("Goals", back_populates="planner_items")

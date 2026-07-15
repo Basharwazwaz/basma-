@@ -10,6 +10,16 @@ class ChallengeBase(BaseModel):
     duration_days: int = Field(7, ge=1)
     points_reward: int = Field(0, ge=0)
 
+class ChallengeCreate(ChallengeBase):
+    pass
+
+class ChallengeUpdate(BaseModel):
+    title: Optional[str] = Field(None, max_length=200)
+    description: Optional[str] = Field(None, max_length=1000)
+    category: Optional[str] = Field(None, max_length=50)
+    duration_days: Optional[int] = Field(None, ge=1)
+    points_reward: Optional[int] = Field(None, ge=0)
+
 class ChallengeResponse(ChallengeBase):
     id: str
     created_at: datetime

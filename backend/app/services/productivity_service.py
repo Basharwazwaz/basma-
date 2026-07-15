@@ -132,14 +132,10 @@ async def update_task(
     for field, value in task_in.model_dump(exclude_unset=True).items():
         setattr(db_task, field, value)
 
-    await db.commit()
-    await db.refresh(db_task)
-
     # ── Achievement: first task completed ──────────────────────────────────
     if was_not_completed and db_task.is_completed:
         from app.services.gamification_service import award_achievement
         from app.services.points_service import add_points
-        # Check if user has any completed tasks (including this one)
         completed_count = await db.scalar(
             select(func.count(Tasks.id)).where(
                 Tasks.user_id == user_id,
@@ -155,6 +151,33 @@ async def update_task(
             )
         await add_points(db, user_id, 10, "إكمال مهمة")
 
+    # ── Auto-update goal progress based on completed tasks ─────────────────
+    if db_task.goal_id:
+        total_tasks = await db.scalar(
+            select(func.count(Tasks.id)).where(
+                Tasks.goal_id == db_task.goal_id, Tasks.user_id == user_id
+            )
+        )
+        completed_tasks = await db.scalar(
+            select(func.count(Tasks.id)).where(
+                Tasks.goal_id == db_task.goal_id,
+                Tasks.user_id == user_id,
+                Tasks.is_completed == True,
+            )
+        )
+        if total_tasks and total_tasks > 0:
+            new_progress = int((completed_tasks / total_tasks) * 100)
+            result = await db.execute(
+                select(Goals).where(Goals.id == db_task.goal_id, Goals.user_id == user_id)
+            )
+            db_goal = result.scalars().first()
+            if db_goal:
+                db_goal.progress_percent = new_progress
+                if new_progress == 100:
+                    db_goal.status = "COMPLETED"
+
+    await db.commit()
+    await db.refresh(db_task)
     return db_task
 
 
@@ -207,6 +230,48 @@ async def update_planner_item(
 
     for field, value in item_in.model_dump(exclude_unset=True).items():
         setattr(db_item, field, value)
+
+    # ── When a planner session is completed, also mark the linked task done ──
+    if db_item.is_completed and db_item.goal_id:
+        # Find a matching pending task with same title and goal_id
+        task_result = await db.execute(
+            select(Tasks).where(
+                Tasks.user_id == user_id,
+                Tasks.goal_id == db_item.goal_id,
+                Tasks.title == db_item.title,
+                Tasks.is_completed == False,
+            ).limit(1)
+        )
+        matching_task = task_result.scalars().first()
+        if matching_task:
+            matching_task.is_completed = True
+            matching_task.status = "DONE"
+            from app.services.points_service import add_points
+            await add_points(db, user_id, 10, f"إكمال جلسة: {db_item.title}")
+            # Goal progress update is handled by update_task, but here we do it directly
+            # since we only set the task flag without calling update_task
+            total_tasks = await db.scalar(
+                select(func.count(Tasks.id)).where(
+                    Tasks.goal_id == db_item.goal_id, Tasks.user_id == user_id
+                )
+            )
+            completed_tasks = await db.scalar(
+                select(func.count(Tasks.id)).where(
+                    Tasks.goal_id == db_item.goal_id,
+                    Tasks.user_id == user_id,
+                    Tasks.is_completed == True,
+                )
+            )
+            if total_tasks and total_tasks > 0:
+                new_progress = int((completed_tasks / total_tasks) * 100)
+                goal_result = await db.execute(
+                    select(Goals).where(Goals.id == db_item.goal_id, Goals.user_id == user_id)
+                )
+                db_goal = goal_result.scalars().first()
+                if db_goal:
+                    db_goal.progress_percent = new_progress
+                    if new_progress >= 100:
+                        db_goal.status = "COMPLETED"
 
     await db.commit()
     await db.refresh(db_item)

@@ -413,12 +413,19 @@ export async function apiDeleteTask(id: string): Promise<void> {
 export interface PlannerData {
   id: string;
   user_id: string;
+  goal_id: string | null;
   title: string;
   plan_date: string;
   start_time: string | null;
   end_time: string | null;
   is_completed: boolean;
   created_at: string;
+}
+
+export async function apiSubmitDigitalHabits(
+  payload: { record_date: string; screen_time_minutes: number; social_media_minutes: number; sleep_minutes: number }
+): Promise<void> {
+  await apiFetch("/health/habits", { method: "POST", body: payload });
 }
 
 export async function apiGetPlanner(plan_date?: string): Promise<PlannerData[]> {
@@ -491,7 +498,9 @@ export interface DashboardSummaryData {
     c: string;
     i: string;
     to: string;
+    trend?: number;
   }[];
+  screen_time_trend?: number;
   screen_time: {
     d: string;
     h?: number;
@@ -757,6 +766,50 @@ export async function apiAdminSeedContent(): Promise<{ message: string }> {
   return apiFetch<{ message: string }>("/admin/content/seed", { method: "POST" });
 }
 
+export interface AdminChallengeData {
+  id: string;
+  title: string;
+  description: string | null;
+  category: string | null;
+  duration_days: number;
+  points_reward: number;
+  created_at: string;
+}
+
+export interface AdminChallengePayload {
+  title: string;
+  description?: string;
+  category?: string;
+  duration_days?: number;
+  points_reward?: number;
+}
+
+export async function apiAdminGetChallenges(): Promise<AdminChallengeData[]> {
+  return apiFetch<AdminChallengeData[]>("/admin/challenges");
+}
+
+export async function apiAdminCreateChallenge(payload: AdminChallengePayload): Promise<AdminChallengeData> {
+  return apiFetch<AdminChallengeData>("/admin/challenges", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function apiAdminUpdateChallenge(id: string, payload: AdminChallengePayload): Promise<AdminChallengeData> {
+  return apiFetch<AdminChallengeData>(`/admin/challenges/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function apiAdminDeleteChallenge(id: string): Promise<void> {
+  await apiFetch(`/admin/challenges/${id}`, { method: "DELETE" });
+}
+
+export async function apiAdminSeedChallenges(): Promise<{ message: string }> {
+  return apiFetch<{ message: string }>("/admin/challenges/seed", { method: "POST" });
+}
+
 // ──────────────────────────────────────────────────────────────────
 // AI Coach helpers
 // ──────────────────────────────────────────────────────────────────
@@ -819,4 +872,8 @@ export interface WeeklyReportData {
 
 export async function apiGetWeeklyReports(): Promise<WeeklyReportData[]> {
   return apiFetch<WeeklyReportData[]>("/weekly-reports");
+}
+
+export async function apiGenerateWeeklyReport(): Promise<WeeklyReportData> {
+  return apiFetch<WeeklyReportData>("/weekly-reports/generate", { method: "POST" });
 }

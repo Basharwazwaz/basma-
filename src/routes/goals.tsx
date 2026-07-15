@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
@@ -18,6 +18,7 @@ import {
   Play,
   AlertCircle,
   Loader2,
+  Minus,
 } from "lucide-react";
 import { apiGetGoals, apiCreateGoal, apiUpdateGoal, apiDeleteGoal } from "@/lib/api";
 import { toast } from "sonner";
@@ -35,6 +36,9 @@ function Goals() {
     queryKey: GOALS_QUERY_KEY,
     queryFn: apiGetGoals,
   });
+
+  const formRef = useRef<HTMLDivElement>(null);
+  const [showForm, setShowForm] = useState(false);
 
   // Form state
   const [title, setTitle] = useState("");
@@ -108,6 +112,15 @@ function Goals() {
       id,
       status: newStatus as "NOT_STARTED" | "IN_PROGRESS" | "COMPLETED" | "ABANDONED",
     });
+  }
+
+  function adjustProgress(id: string, current: number, delta: number) {
+    const next = Math.max(0, Math.min(100, current + delta));
+    updateGoalMutation.mutate({ id, progress_percent: next });
+  }
+
+  function completeGoal(id: string) {
+    updateGoalMutation.mutate({ id, progress_percent: 100, status: "COMPLETED" });
   }
 
   // Derived state
@@ -195,13 +208,46 @@ function Goals() {
                   </div>
 
                   <Progress value={g.progress_percent} className="h-2" />
-                  <div className="mt-2 flex justify-between text-sm">
+                  <div className="mt-2 flex items-center justify-between gap-2 text-sm">
                     <span className="text-muted-foreground">
                       الإنجاز: {Math.round((g.progress_percent / 100) * tgt)} {unit}
                     </span>
-                    <span className="font-semibold">
-                      الهدف: {tgt} {unit}
-                    </span>
+                    <div className="flex items-center gap-1">
+                      {g.progress_percent < 100 && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => adjustProgress(g.id, g.progress_percent, 10)}
+                            disabled={updateGoalMutation.isPending}
+                          >+10%</Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => adjustProgress(g.id, g.progress_percent, 25)}
+                            disabled={updateGoalMutation.isPending}
+                          >+25%</Button>
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={() => completeGoal(g.id)}
+                            disabled={updateGoalMutation.isPending}
+                          ><CheckCircle2 className="h-3 w-3 ml-1" />إكمال</Button>
+                        </>
+                      )}
+                      {g.progress_percent > 0 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => adjustProgress(g.id, g.progress_percent, -10)}
+                          disabled={updateGoalMutation.isPending}
+                        ><Minus className="h-3 w-3" /></Button>
+                      )}
+                    </div>
                   </div>
                 </Card>
               );
@@ -232,10 +278,20 @@ function Goals() {
         </div>
 
         {/* Add goal form */}
-        <Card className="h-fit p-5 shadow-soft">
-          <h3 className="mb-4 flex items-center gap-2 font-bold">
-            <Plus className="h-4 w-4" /> هدف جديد
-          </h3>
+        <Card ref={formRef} className="h-fit p-5 shadow-soft scroll-mt-24">
+          <button
+            type="button"
+            onClick={() => setShowForm(!showForm)}
+            className="mb-4 flex w-full items-center justify-between gap-2 font-bold"
+          >
+            <span className="flex items-center gap-2">
+              <Plus className="h-4 w-4" /> هدف جديد
+            </span>
+            <span className="text-xs text-muted-foreground lg:hidden">
+              {showForm ? "إخفاء" : "إضافة"}
+            </span>
+          </button>
+          <div className={`xl:block ${showForm ? "block" : "hidden"}`}>
           <form className="space-y-3" onSubmit={handleAdd}>
             <div className="space-y-1.5">
               <Label htmlFor="goal-title">العنوان</Label>
@@ -296,7 +352,19 @@ function Goals() {
               )}
             </Button>
           </form>
+          </div>
         </Card>
+
+        {/* Floating add button on mobile */}
+        {!showForm && (
+          <button
+            onClick={() => { setShowForm(true); formRef.current?.scrollIntoView({ behavior: "smooth" }); }}
+            className="fixed bottom-6 left-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl xl:hidden hover:bg-primary/90 transition-all"
+            aria-label="إضافة هدف"
+          >
+            <Plus className="h-6 w-6" />
+          </button>
+        )}
       </div>
     </AppShell>
   );

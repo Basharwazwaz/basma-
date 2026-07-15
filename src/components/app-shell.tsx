@@ -326,6 +326,7 @@ export function AppShell({
     <div className="min-h-screen bg-background">
       <a
         href="#main-content"
+        suppressHydrationWarning
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:right-4 focus:z-[100] focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
       >
         {currentLanguage === "ar" ? "تخطّى إلى المحتوى الرئيسي" : "Skip to main content"}

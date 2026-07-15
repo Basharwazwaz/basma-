@@ -108,6 +108,8 @@ function getGreeting(name: string) {
 function ScoreCard({ s }: { s: DashboardSummaryData["scores"][0] }) {
   const animatedValue = useCountUp(s.v, 1200);
   const Icon = ICON_MAP[s.i] || Activity;
+  const tr = s.trend ?? 0;
+  const isUp = tr > 0;
 
   return (
     <Link to={s.to}>
@@ -118,7 +120,11 @@ function ScoreCard({ s }: { s: DashboardSummaryData["scores"][0] }) {
           >
             <Icon className="h-5 w-5" />
           </div>
-          <span className="text-xs text-success">+٤٪</span>
+          {tr !== 0 && (
+            <span className={`text-xs ${isUp ? "text-success" : "text-destructive"}`}>
+              {isUp ? "+" : ""}{tr}٪
+            </span>
+          )}
         </div>
         <div className="mt-4 text-sm text-muted-foreground">{s.t}</div>
         <div className="mt-1 flex items-end gap-1.5">
@@ -283,10 +289,12 @@ function Dashboard() {
                 متوسط {dashboard?.screen_time_avg || 0} ساعة يوميًا
               </p>
             </div>
-            <Badge variant="secondary">انخفاض ١٢٪</Badge>
+            <Badge variant="secondary">
+              {(dashboard?.screen_time_trend ?? 0) >= 0 ? "ارتفاع" : "انخفاض"} {Math.abs(dashboard?.screen_time_trend ?? 0)}٪
+            </Badge>
           </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-64 bg-card rounded-lg">
+              <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dashboard?.screen_time || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -307,9 +315,10 @@ function Dashboard() {
         <Card className="p-5">
           <h3 className="text-lg font-bold">مزاجك</h3>
           <p className="text-xs text-muted-foreground">آخر ٧ أيام</p>
-          <div className="mt-4 h-64">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="mt-4 h-64 bg-card rounded-lg">
+              <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dashboard?.mood_chart || []}>
+                <rect width="100%" height="100%" fill="var(--card)" />
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
                 <XAxis dataKey="d" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis domain={[0, 10]} stroke="hsl(var(--muted-foreground))" fontSize={12} />

@@ -19,8 +19,9 @@ import {
   CartesianGrid,
   Legend,
 } from "recharts";
-import { apiGetMoods, apiSubmitMood, apiGetPlanner, apiGetTasks } from "@/lib/api";
+import { apiGetMoods, apiSubmitMood, apiGetPlanner, apiGetTasks, apiSubmitDigitalHabits } from "@/lib/api";
 import { Slider } from "@/components/ui/slider";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/mood")({
@@ -51,6 +52,9 @@ function Mood() {
   const [stressScore, setStressScore] = useState(5);
   const [note, setNote] = useState("");
   const [showConfetti, setShowConfetti] = useState(false);
+  const [screenTime, setScreenTime] = useState(6);
+  const [socialMedia, setSocialMedia] = useState(3);
+  const [sleep, setSleep] = useState(7);
 
   // Sync state when mood data loads
   useEffect(() => {
@@ -72,13 +76,18 @@ function Mood() {
     mutationFn: apiSubmitMood,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["moods"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard_summary"] });
       setShowConfetti(true);
-      toast.success("تم حفظ مزاجك اليوم!");
+      toast.success("تم حفظ يومك!");
       localStorage.setItem("basma-mood-date", today);
     },
     onError: () => {
       toast.error("فشل حفظ المزاج");
     },
+  });
+
+  const submitHabitsMutation = useMutation({
+    mutationFn: apiSubmitDigitalHabits,
   });
 
   const handleSave = () => {
@@ -91,12 +100,13 @@ function Mood() {
       mood_state: emojiConfig.state,
       note: note.trim() || undefined,
     });
+    submitHabitsMutation.mutate({
+      record_date: today,
+      screen_time_minutes: Math.round(screenTime * 60),
+      social_media_minutes: Math.round(socialMedia * 60),
+      sleep_minutes: Math.round(sleep * 60),
+    });
   };
-
-  const isSaved =
-    todayLog?.mood_score === sel &&
-    todayLog?.note === note &&
-    todayLog?.stress_score === stressScore;
 
   const chartData = useMemo(() => {
     // Reverse so oldest is first (for chart LTR or RTL logic)
@@ -202,20 +212,60 @@ function Mood() {
             <span>توتر شديد</span>
           </div>
         </div>
+        <div className="my-6 grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">🖥 وقت الشاشة</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={24}
+                value={screenTime}
+                onChange={(e) => setScreenTime(Number(e.target.value))}
+                className="h-9 text-center"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">ساعة</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">📱 تواصل اجتماعي</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={24}
+                value={socialMedia}
+                onChange={(e) => setSocialMedia(Number(e.target.value))}
+                className="h-9 text-center"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">ساعة</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label className="text-xs font-medium">😴 النوم</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                min={0}
+                max={24}
+                value={sleep}
+                onChange={(e) => setSleep(Number(e.target.value))}
+                className="h-9 text-center"
+              />
+              <span className="text-xs text-muted-foreground shrink-0">ساعة</span>
+            </div>
+          </div>
+        </div>
         <div className="mt-4 relative">
           <Button
             onClick={handleSave}
-            disabled={isSaved || !sel || submitMoodMutation.isPending}
-            className={`gradient-primary shadow-soft transition-all ${isSaved ? "bg-success hover:bg-success text-success-foreground" : ""}`}
+            disabled={!sel || submitMoodMutation.isPending}
+            className="gradient-primary shadow-soft transition-all w-full"
           >
             {submitMoodMutation.isPending ? (
               <Loader2 className="me-2 h-4 w-4 animate-spin" />
-            ) : isSaved ? (
-              <>
-                <CheckCircle2 className="me-2 h-4 w-4" /> تم الحفظ
-              </>
             ) : (
-              "حفظ مزاج اليوم"
+              "حفظ اليوم"
             )}
           </Button>
 
@@ -263,7 +313,7 @@ function Mood() {
         </div>
       </Card>
 
-      {sel && sel >= 7 && isSaved && (
+      {sel && sel >= 7 && todayLog && todayLog.mood_score === sel && (
         <Card className="mb-6 bg-success/10 p-4 text-success-foreground">
           <strong className="text-success">رائع!</strong> يومك يبدو إيجابيًا. حاول الحفاظ على هذا
           الإيقاع بنوم منتظم وتعرّض كافٍ للشمس.

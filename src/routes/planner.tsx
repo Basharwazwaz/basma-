@@ -288,12 +288,12 @@ function Planner() {
           </div>
           <div className="grid grid-cols-7 relative">
             {isLoadingPlanner && (
-              <div className="absolute inset-0 flex justify-center items-center bg-background/50 z-10">
+              <div className="absolute inset-0 flex justify-center items-center bg-card/80 z-10">
                 <Loader2 className="animate-spin" />
               </div>
             )}
             {!isLoadingPlanner && displaySlots.length === 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-background/50">
+              <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-card/80">
                 <CalendarDays className="mb-3 h-10 w-10 text-muted-foreground/40" />
                 <p className="font-semibold text-muted-foreground">لا توجد خطط بعد</p>
                 <p className="mt-1 text-sm text-muted-foreground/70">
@@ -302,7 +302,7 @@ function Planner() {
               </div>
             )}
             {days.map((_, di) => (
-              <div key={di} className={`min-h-[320px] space-y-2 p-2 ${di === 0 ? "" : "border-r"}`}>
+              <div key={di} className={`min-h-[320px] space-y-2 p-2 bg-card ${di === 0 ? "" : "border-r"}`}>
                 {displaySlots
                   .filter((s) => s.d === di)
                   .map((s, i) => (

@@ -20,3 +20,12 @@ async def get_weekly_reports(
 ):
     """Retrieve all weekly reports for the current user."""
     return await weekly_report_service.get_weekly_reports(db, current_user.id)
+
+
+@router.post("/generate", response_model=WeeklyReportResponse)
+async def generate_weekly_report(
+    db: AsyncSession = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    """Generate a new weekly report based on real user data for the past 7 days."""
+    return await weekly_report_service.generate_weekly_report(db, current_user.id)

@@ -22,11 +22,12 @@ class PlanEvent:
     start_time: time
     end_time: time
     event_type: str  # study, break, review, health
+    goal_id: Optional[str] = None
 
 
 async def generate_study_plan(
     db: AsyncSession,
-    user_id: uuid.UUID,
+    user_id: str,
     target_week_start: Optional[date] = None,
 ) -> List[PlanEvent]:
     """
@@ -38,11 +39,8 @@ async def generate_study_plan(
 
     today = date.today()
     if target_week_start is None:
-        # Start from next Monday
-        days_until_monday = (7 - today.weekday()) % 7
-        if days_until_monday == 0:
-            days_until_monday = 7
-        target_week_start = today + timedelta(days=days_until_monday)
+        # Start from tomorrow (current week)
+        target_week_start = today + timedelta(days=1)
 
     # ── Fetch user data ────────────────────────────────────────────────────
     goals_result = await db.execute(
@@ -123,6 +121,7 @@ async def generate_study_plan(
                 start_time=current_time,
                 end_time=time(min(end_hour, 23), end_min),
                 event_type="study",
+                goal_id=task.goal_id,
             ))
 
             minutes_used += task_minutes
@@ -133,15 +132,20 @@ async def generate_study_plan(
             break_start_min = break_start_min % 60
 
             if minutes_used < study_minutes_per_day:
+                break_end_min = break_start_min + 10
+                break_end_hour = break_start_hour + break_end_min // 60
+                break_end_min = break_end_min % 60
                 events.append(PlanEvent(
                     title="استراحة",
                     plan_date=current_date,
                     start_time=time(min(break_start_hour, 23), break_start_min),
-                    end_time=time(min(break_start_hour, 23), break_start_min + 10),
+                    end_time=time(min(break_end_hour, 23), break_end_min),
                     event_type="break",
                 ))
 
-            current_time = time(min(break_start_hour, 23), (break_start_min + 10) % 60)
+            next_min = (break_start_min + 10) % 60
+            next_hour = break_start_hour + (break_start_min + 10) // 60
+            current_time = time(min(next_hour, 23), next_min)
 
     return events
 
@@ -212,6 +216,7 @@ async def save_plan_to_planner(
             plan_date=event.plan_date,
             start_time=event.start_time,
             end_time=event.end_time,
+            goal_id=event.goal_id,
         )
         db.add(db_event)
         saved.append(db_event)

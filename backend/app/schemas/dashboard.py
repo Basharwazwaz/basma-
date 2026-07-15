@@ -8,6 +8,7 @@ class ScoreItem(BaseModel):
     c: str
     i: str
     to: str
+    trend: int = 0  # percentage change vs previous period
 
 class ChartData(BaseModel):
     d: str
@@ -23,5 +24,6 @@ class DashboardSummaryResponse(BaseModel):
     scores: List[ScoreItem]
     screen_time: List[ChartData]
     screen_time_avg: float
+    screen_time_trend: int = 0  # percentage change vs previous week
     mood_chart: List[ChartData]
     suggestions: List[SuggestionItem]

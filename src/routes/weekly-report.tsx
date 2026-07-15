@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AppShell } from "@/components/app-shell";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,14 +19,15 @@ import {
   Calendar,
   TrendingUp,
   Smartphone,
-  BookOpen,
   Heart,
   Target,
   Sparkles,
   TrendingDown,
   Award,
+  Loader2,
 } from "lucide-react";
-import { apiGetWeeklyReports, type WeeklyReportData } from "@/lib/api";
+import { apiGetWeeklyReports, apiGenerateWeeklyReport, type WeeklyReportData } from "@/lib/api";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/weekly-report")({
   head: () => ({ meta: [{ title: "التقرير الأسبوعي | بصمة+" }] }),
@@ -34,6 +35,8 @@ export const Route = createFileRoute("/weekly-report")({
 });
 
 function WeeklyReport() {
+  const queryClient = useQueryClient();
+
   const {
     data: reports,
     isLoading,
@@ -43,16 +46,36 @@ function WeeklyReport() {
     queryFn: apiGetWeeklyReports,
   });
 
+  const generateMutation = useMutation({
+    mutationFn: apiGenerateWeeklyReport,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["weekly-reports"] });
+      toast.success("تم إنشاء التقرير الأسبوعي!");
+    },
+    onError: () => {
+      toast.error("فشل إنشاء التقرير");
+    },
+  });
+
   const latestReport = reports?.[0] ?? null;
   const metrics = (latestReport?.metrics_summary as Record<string, unknown>) ?? {};
-  const screenTimeAvg = (metrics.screen_time_avg as number) ?? 4.2;
-  const studyHours = (metrics.study_hours as number) ?? 18;
-  const moodAvg = (metrics.mood_avg as number) ?? 5;
-  const goalsCompleted = (metrics.goals_completed as number) ?? 0;
-  const overallScore = (metrics.overall_score as number) ?? 0;
-  const screenTimeTrend = (metrics.screen_time_trend as number) ?? 0;
-  const studyTrend = (metrics.study_trend as number) ?? 0;
-  const moodTrend = (metrics.mood_trend as number) ?? 0;
+  const screenTimeAvg = (metrics.screen_time_avg_hrs as number) ?? 0;
+  const moodAvg = (metrics.mood_avg as number) ?? 0;
+  const completedTasks = (metrics.completed_tasks as number) ?? 0;
+  const totalTasks = (metrics.total_tasks as number) ?? 0;
+  const completedGoals = (metrics.completed_goals as number) ?? 0;
+  const totalGoals = (metrics.total_goals as number) ?? 0;
+  const healthScore = (metrics.health_score as number) ?? 0;
+  const wellbeingScore = (metrics.wellbeing_score as number) ?? 0;
+  const learningScore = (metrics.learning_score as number) ?? 0;
+  const productivityPct = (metrics.productivity_pct as number) ?? 0;
+  const screenTimeChangePct = (metrics.screen_time_change_pct as number) ?? 0;
+  const completedContent = (metrics.completed_content as number) ?? 0;
+
+  const overallScore = latestReport
+    ? Math.round((healthScore + wellbeingScore + learningScore) / 3)
+    : 0;
+
   const comparisonData =
     (metrics.screen_time_comparison as { name: string; lastWeek: number; thisWeek: number }[]) ??
     [];
@@ -61,45 +84,51 @@ function WeeklyReport() {
     {
       t: "وقت الشاشة",
       v: `${screenTimeAvg} س/يوم`,
-      trend: screenTimeTrend,
+      trend: screenTimeChangePct,
       icon: Smartphone,
       color: "text-primary",
     },
     {
-      t: "ساعات الدراسة",
-      v: `${studyHours} ساعة`,
-      trend: studyTrend,
-      icon: BookOpen,
-      color: "text-info",
-    },
-    { t: "متوسط المزاج", v: `${moodAvg}/١٠`, trend: moodTrend, icon: Heart, color: "text-success" },
-    {
-      t: "الأهداف المنجزة",
-      v: `${goalsCompleted} أهداف`,
+      t: "الإنتاجية",
+      v: `${productivityPct}٪`,
       trend: 0,
-      icon: Target,
+      icon: TrendingUp,
       color: "text-warning",
     },
+    { t: "متوسط المزاج", v: `${moodAvg}/١٠`, trend: 0, icon: Heart, color: "text-success" },
+    { t: "الأهداف", v: `${completedGoals}/${totalGoals}`, trend: 0, icon: Target, color: "text-warning" },
   ];
 
-  const aiInsights = (latestReport?.metrics_summary as Record<string, unknown>)?.insights as
-    { t: string; d: string; tag: string; tagColor: string }[] | undefined;
+  const INSIGHTS = [];
+  if (latestReport?.ai_summary) {
+    INSIGHTS.push({ t: "ملخص الأسبوع", d: latestReport.ai_summary, tag: "AI", tagColor: "bg-primary/10 text-primary" });
+  }
+  if (healthScore >= 70) {
+    INSIGHTS.push({ t: "صحة رقمية جيدة", d: `درجة صحتك الرقمية ${healthScore}/١٠٠. استمر في الحفاظ على وقت شاشة معتدل.`, tag: "صحة", tagColor: "bg-success/10 text-success" });
+  }
+  if (wellbeingScore >= 70) {
+    INSIGHTS.push({ t: "رفاهية ممتازة", d: `مستوى الرفاهية لديك ${wellbeingScore}/١٠٠. مزاجك إيجابي هذا الأسبوع.`, tag: "رفاه", tagColor: "bg-info/10 text-info" });
+  }
+  if (learningScore > 0) {
+    INSIGHTS.push({ t: "تعلّم مستمر", d: `أكملت ${completedContent} محتوى تعليمي هذا الأسبوع.`, tag: "تعلّم", tagColor: "bg-warning/10 text-warning" });
+  }
+  if (INSIGHTS.length === 0) {
+    INSIGHTS.push({ t: "ابدأ التسجيل", d: "سجّل مزاجك وعاداتك الرقمية يوميًا لتحصل على تحليلات دقيقة.", tag: "نصيحة", tagColor: "bg-primary/10 text-primary" });
+  }
 
-  const INSIGHTS = aiInsights ?? [
-    {
-      t: "أداء متميز",
-      d: "استمر في العمل الجيد!",
-      tag: "عام",
-      tagColor: "bg-primary/10 text-primary hover:bg-primary/20",
-    },
-  ];
-
-  const recommendations = (latestReport?.metrics_summary as Record<string, unknown>)
-    ?.recommendations as { t: string; d: string; a: string }[] | undefined;
-
-  const RECOMMENDATIONS = recommendations ?? [
-    { t: "تابع التقدم", d: "راجع تقاريرك السابقة وتابع تطورك.", a: "عرض التقارير" },
-  ];
+  const RECOMMENDATIONS: { t: string; d: string; a: string }[] = [];
+  if (screenTimeAvg > 5) {
+    RECOMMENDATIONS.push({ t: "قلّل وقت الشاشة", d: "متوسط وقت شاشة مرتفع. جرّب تقليل ساعتين يوميًا ومارس الرياضة.", a: "عرض الإحصائيات" });
+  }
+  if (productivityPct < 50) {
+    RECOMMENDATIONS.push({ t: "حسّن الإنتاجية", d: "نسبة إنجاز المهام منخفضة. جرّب تقسيم المهام الكبيرة إلى أجزاء أصغر.", a: "عرض المهام" });
+  }
+  if (moodAvg < 5) {
+    RECOMMENDATIONS.push({ t: "اعتني بصحتك النفسية", d: "متوسط المزاج منخفض هذا الأسبوع. جرّب تمارين التنفس أو المشي.", a: "عرض تمارين" });
+  }
+  if (RECOMMENDATIONS.length === 0) {
+    RECOMMENDATIONS.push({ t: "أحسنت!", d: "كل المؤشرات إيجابية. حافظ على نمط حياتك الصحي.", a: "عرض التقرير" });
+  }
 
   return (
     <AppShell
@@ -125,20 +154,36 @@ function WeeklyReport() {
             </h2>
           </div>
 
-          <div className="flex items-center gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm shrink-0">
-            <div className="text-center">
-              <div className="text-3xl font-black tabular-nums">{overallScore}</div>
-              <div className="text-[10px] opacity-80 uppercase tracking-widest mt-1">النقاط</div>
+          {latestReport ? (
+            <div className="flex items-center gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm shrink-0">
+              <div className="text-center">
+                <div className="text-3xl font-black tabular-nums">{overallScore}</div>
+                <div className="text-[10px] opacity-80 uppercase tracking-widest mt-1">النقاط</div>
+              </div>
+              <div className="h-10 w-px bg-white/20" />
+              <div className="flex flex-col items-center">
+                <Badge variant="secondary" className="bg-success text-success-foreground border-none">
+                  <TrendingUp className="h-3 w-3 me-1" />
+                  {screenTimeChangePct < 0 ? Math.abs(screenTimeChangePct) : 0}٪
+                </Badge>
+                <div className="text-[10px] opacity-80 uppercase tracking-widest mt-1.5">النمو</div>
+              </div>
             </div>
-            <div className="h-10 w-px bg-white/20" />
-            <div className="flex flex-col items-center">
-              <Badge variant="secondary" className="bg-success text-success-foreground border-none">
-                <TrendingUp className="h-3 w-3 me-1" /> +
-                {screenTimeTrend < 0 ? Math.abs(screenTimeTrend) : studyTrend > 0 ? studyTrend : 0}٪
-              </Badge>
-              <div className="text-[10px] opacity-80 uppercase tracking-widest mt-1.5">النمو</div>
-            </div>
-          </div>
+          ) : (
+            <Button
+              onClick={() => generateMutation.mutate()}
+              disabled={generateMutation.isPending}
+              className="bg-white text-primary hover:bg-white/90 shrink-0"
+              size="lg"
+            >
+              {generateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 ml-2 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4 ml-2" />
+              )}
+              {generateMutation.isPending ? "جارٍ الإنشاء..." : "إنشاء التقرير"}
+            </Button>
+          )}
         </div>
       </Card>
 

@@ -10,7 +10,7 @@ class LearningContent(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()), index=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), nullable=True)
-    content_type: Mapped[str] = mapped_column(SA_ENUM("COURSE", "ARTICLE", "VIDEO", "BOOK", name="content_type_enum", create_type=False))
+    content_type: Mapped[str] = mapped_column(SA_ENUM("COURSE", "ARTICLE", "VIDEO", "BOOK", "STORY", name="content_type_enum", create_type=False))
     url: Mapped[str] = mapped_column(String(500), nullable=True)
     category: Mapped[str] = mapped_column(String(50), nullable=True)
     tags: Mapped[str] = mapped_column(String(500), nullable=True)  # JSON string of tags

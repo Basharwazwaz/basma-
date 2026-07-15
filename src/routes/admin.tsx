@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Shield, Users, AlertTriangle, BookOpen, Plus, Pencil, Trash2, PackageOpen } from "lucide-react";
+import { Loader2, Shield, Users, Trophy, BookOpen, Plus, Pencil, Trash2, PackageOpen, Star } from "lucide-react";
 import {
   apiAdminGetUsers,
   apiAdminGetUserCount,
@@ -20,8 +20,15 @@ import {
   apiAdminUpdateContent,
   apiAdminDeleteContent,
   apiAdminSeedContent,
+  apiAdminGetChallenges,
+  apiAdminCreateChallenge,
+  apiAdminUpdateChallenge,
+  apiAdminDeleteChallenge,
+  apiAdminSeedChallenges,
   type AdminContentData,
   type AdminContentPayload,
+  type AdminChallengeData,
+  type AdminChallengePayload,
 } from "@/lib/api";
 import { useAuth } from "@/hooks/use-auth";
 import { useT } from "@/i18n/use-t";
@@ -33,7 +40,7 @@ export const Route = createFileRoute("/admin")({
   component: Admin,
 });
 
-const CONTENT_TYPES = ["COURSE", "ARTICLE", "VIDEO", "BOOK"] as const;
+const CONTENT_TYPES = ["COURSE", "ARTICLE", "VIDEO", "BOOK", "STORY"] as const;
 const DIFFICULTY_LEVELS = ["BEGINNER", "INTERMEDIATE", "ADVANCED"] as const;
 
 const defaultContentForm: AdminContentPayload = {
@@ -52,10 +59,19 @@ function Admin() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<"users" | "content">("users");
+  const [tab, setTab] = useState<"users" | "content" | "challenges">("users");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [challengeDialogOpen, setChallengeDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+  const [challengeEditId, setChallengeEditId] = useState<string | null>(null);
   const [form, setForm] = useState<AdminContentPayload>({ ...defaultContentForm });
+  const [challengeForm, setChallengeForm] = useState<AdminChallengePayload>({
+    title: "",
+    description: "",
+    category: "",
+    duration_days: 7,
+    points_reward: 0,
+  });
 
   useEffect(() => {
     if (user && user.role !== "ADMIN") {
@@ -78,6 +94,12 @@ function Admin() {
   const { data: content, isLoading: contentLoading } = useQuery({
     queryKey: ["admin", "content"],
     queryFn: apiAdminGetContent,
+    enabled: user?.role === "ADMIN",
+  });
+
+  const { data: challenges, isLoading: challengesLoading } = useQuery({
+    queryKey: ["admin", "challenges"],
+    queryFn: apiAdminGetChallenges,
     enabled: user?.role === "ADMIN",
   });
 
@@ -133,6 +155,47 @@ function Admin() {
     },
   });
 
+  const saveChallengeMutation = useMutation({
+    mutationFn: async () => {
+      if (challengeEditId) {
+        return apiAdminUpdateChallenge(challengeEditId, challengeForm);
+      }
+      return apiAdminCreateChallenge(challengeForm);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "challenges"] });
+      toast.success(currentLanguage === "ar" ? "تم حفظ التحدي" : "Challenge saved");
+      setChallengeDialogOpen(false);
+      setChallengeEditId(null);
+      setChallengeForm({ title: "", description: "", category: "", duration_days: 7, points_reward: 0 });
+    },
+    onError: () => {
+      toast.error(currentLanguage === "ar" ? "فشل حفظ التحدي" : "Failed to save challenge");
+    },
+  });
+
+  const deleteChallengeMutation = useMutation({
+    mutationFn: (id: string) => apiAdminDeleteChallenge(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "challenges"] });
+      toast.success(currentLanguage === "ar" ? "تم حذف التحدي" : "Challenge deleted");
+    },
+    onError: () => {
+      toast.error(currentLanguage === "ar" ? "فشل حذف التحدي" : "Failed to delete challenge");
+    },
+  });
+
+  const seedChallengesMutation = useMutation({
+    mutationFn: () => apiAdminSeedChallenges(),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "challenges"] });
+      toast.success(data.message.includes("exists") ? t("admin.seedExists") : t("admin.seedSuccess"));
+    },
+    onError: () => {
+      toast.error(currentLanguage === "ar" ? "فشل بذر التحديات" : "Failed to seed challenges");
+    },
+  });
+
   function openAdd() {
     setEditId(null);
     setForm({ ...defaultContentForm });
@@ -170,6 +233,7 @@ function Admin() {
     ARTICLE: t("admin.article"),
     VIDEO: t("admin.video"),
     BOOK: t("admin.book"),
+    STORY: currentLanguage === "ar" ? "قصة" : "Story",
   };
 
   const diffLabel: Record<string, string> = {
@@ -181,7 +245,7 @@ function Admin() {
   return (
     <AppShell title={t("admin.title")} subtitle={t("admin.adminPanel")}>
       <div className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-4">
           <Card className="p-4 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
               <Users className="h-5 w-5 text-primary" />
@@ -209,6 +273,15 @@ function Admin() {
               <div className="text-xs text-muted-foreground">{t("admin.contentTab")}</div>
             </div>
           </Card>
+          <Card className="p-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-500/10">
+              <Trophy className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <div className="text-2xl font-bold">{challenges?.length ?? "—"}</div>
+              <div className="text-xs text-muted-foreground">تحديات</div>
+            </div>
+          </Card>
         </div>
 
         <div className="flex gap-1 border-b">
@@ -227,6 +300,14 @@ function Admin() {
             }`}
           >
             {t("admin.contentTab")}
+          </button>
+          <button
+            onClick={() => setTab("challenges")}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              tab === "challenges" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            التحديات
           </button>
         </div>
 
@@ -371,6 +452,81 @@ function Admin() {
             </Card>
           </div>
         )}
+
+        {tab === "challenges" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex gap-2">
+                <Button onClick={() => { setChallengeEditId(null); setChallengeForm({ title: "", description: "", category: "", duration_days: 7, points_reward: 0 }); setChallengeDialogOpen(true); }} size="sm">
+                  <Plus className="h-4 w-4 ms-1" /> إضافة تحدي
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => seedChallengesMutation.mutate()}
+                  disabled={seedChallengesMutation.isPending}
+                >
+                  <PackageOpen className="h-4 w-4 ms-1" /> {t("admin.seed")}
+                </Button>
+              </div>
+            </div>
+
+            <Card>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-muted-foreground">
+                      <th className="p-3 text-right font-medium">{t("admin.titleField")}</th>
+                      <th className="p-3 text-right font-medium">التصنيف</th>
+                      <th className="p-3 text-right font-medium">المدة</th>
+                      <th className="p-3 text-right font-medium">النقاط</th>
+                      <th className="p-3 text-right font-medium">{t("admin.actions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {challengesLoading ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center">
+                          <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                        </td>
+                      </tr>
+                    ) : !challenges?.length ? (
+                      <tr>
+                        <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                          لا توجد تحديات
+                        </td>
+                      </tr>
+                    ) : (
+                      challenges.map((c) => (
+                        <tr key={c.id} className="border-b last:border-0 hover:bg-muted/50">
+                          <td className="p-3 font-medium max-w-[200px] truncate">{c.title}</td>
+                          <td className="p-3"><Badge variant="secondary">{c.category ?? "—"}</Badge></td>
+                          <td className="p-3 text-muted-foreground">{c.duration_days} يوم</td>
+                          <td className="p-3"><Badge variant="outline">+{c.points_reward}</Badge></td>
+                          <td className="p-3">
+                            <div className="flex gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => { setChallengeEditId(c.id); setChallengeForm({ title: c.title, description: c.description ?? "", category: c.category ?? "", duration_days: c.duration_days, points_reward: c.points_reward }); setChallengeDialogOpen(true); }}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive hover:bg-destructive/10"
+                                onClick={() => { if (confirm(`حذف "${c.title}"؟`)) deleteChallengeMutation.mutate(c.id); }}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -475,6 +631,65 @@ function Admin() {
                   <Loader2 className="h-4 w-4 animate-spin ms-1" />
                 ) : null}
                 {t("admin.save")}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={challengeDialogOpen} onOpenChange={setChallengeDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{challengeEditId ? "تعديل التحدي" : "إضافة تحدي"}</DialogTitle>
+            <DialogDescription>أدخل بيانات التحدي الجديد</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>العنوان</Label>
+              <Input
+                value={challengeForm.title}
+                onChange={(e) => setChallengeForm({ ...challengeForm, title: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>الوصف</Label>
+              <Textarea
+                value={challengeForm.description ?? ""}
+                onChange={(e) => setChallengeForm({ ...challengeForm, description: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>التصنيف</Label>
+                <Input
+                  value={challengeForm.category ?? ""}
+                  onChange={(e) => setChallengeForm({ ...challengeForm, category: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>المدة (أيام)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={challengeForm.duration_days ?? 7}
+                  onChange={(e) => setChallengeForm({ ...challengeForm, duration_days: parseInt(e.target.value) || 7 })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>النقاط</Label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={challengeForm.points_reward ?? 0}
+                  onChange={(e) => setChallengeForm({ ...challengeForm, points_reward: parseInt(e.target.value) || 0 })}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setChallengeDialogOpen(false)}>إلغاء</Button>
+              <Button onClick={() => saveChallengeMutation.mutate()} disabled={saveChallengeMutation.isPending || !challengeForm.title}>
+                {saveChallengeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin ms-1" /> : null}
+                حفظ
               </Button>
             </div>
           </div>

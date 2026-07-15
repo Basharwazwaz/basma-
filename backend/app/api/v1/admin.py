@@ -11,7 +11,9 @@ from app.db.session import get_db
 from app.api.deps import get_admin_user
 from app.models.user import Users
 from app.models.content import LearningContent
+from app.models.gamification import Challenges
 from app.schemas.content import ContentCreate, ContentResponse
+from app.schemas.gamification import ChallengeResponse, ChallengeCreate, ChallengeUpdate
 
 router = APIRouter()
 
@@ -204,3 +206,86 @@ async def admin_seed_content(
         db.add(c)
     await db.commit()
     return {"message": f"Seeded {len(samples)} content items"}
+
+
+# ── Challenge Management ────────────────────────────────────────────
+
+
+@router.get("/admin/challenges", response_model=List[ChallengeResponse])
+async def admin_list_challenges(
+    db: AsyncSession = Depends(get_db),
+    admin: Users = Depends(get_admin_user),
+):
+    result = await db.execute(
+        select(Challenges).order_by(Challenges.created_at.desc())
+    )
+    return result.scalars().all()
+
+
+@router.post("/admin/challenges", response_model=ChallengeResponse, status_code=status.HTTP_201_CREATED)
+async def admin_create_challenge(
+    challenge_in: ChallengeCreate,
+    db: AsyncSession = Depends(get_db),
+    admin: Users = Depends(get_admin_user),
+):
+    challenge = Challenges(**challenge_in.model_dump())
+    db.add(challenge)
+    await db.commit()
+    await db.refresh(challenge)
+    return challenge
+
+
+@router.put("/admin/challenges/{challenge_id}", response_model=ChallengeResponse)
+async def admin_update_challenge(
+    challenge_id: str,
+    challenge_in: ChallengeUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: Users = Depends(get_admin_user),
+):
+    result = await db.execute(select(Challenges).where(Challenges.id == challenge_id))
+    challenge = result.scalars().first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+
+    for field, value in challenge_in.model_dump(exclude_unset=True).items():
+        setattr(challenge, field, value)
+
+    await db.commit()
+    await db.refresh(challenge)
+    return challenge
+
+
+@router.delete("/admin/challenges/{challenge_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def admin_delete_challenge(
+    challenge_id: str,
+    db: AsyncSession = Depends(get_db),
+    admin: Users = Depends(get_admin_user),
+):
+    result = await db.execute(select(Challenges).where(Challenges.id == challenge_id))
+    challenge = result.scalars().first()
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Challenge not found")
+    await db.delete(challenge)
+    await db.commit()
+
+
+@router.post("/admin/challenges/seed")
+async def admin_seed_challenges(
+    db: AsyncSession = Depends(get_db),
+    admin: Users = Depends(get_admin_user),
+):
+    existing = await db.execute(select(func.count(Challenges.id)))
+    if existing.scalar() > 0:
+        return {"message": "Challenges already exist"}
+
+    samples = [
+        Challenges(title="تحدي القراءة ٣٠ يومًا", description="اقرأ ٢٠ دقيقة يوميًا لمدة شهر", category="تعلّم", duration_days=30, points_reward=100),
+        Challenges(title="تحدي المشي اليومي", description="امشِ ٣٠ دقيقة كل يوم لمدة أسبوع", category="صحة", duration_days=7, points_reward=50),
+        Challenges(title="تحدي تصفير السوشال ميديا", description="قلّل استخدام وسائل التواصل لـ ٣٠ دقيقة يوميًا", category="رفاه", duration_days=14, points_reward=75),
+        Challenges(title="تحدي النوم المنتظم", description="نم ٨ ساعات يوميًا لمدة ٢١ يومًا", category="صحة", duration_days=21, points_reward=150),
+        Challenges(title="تحدي الإنجاز اليومي", description="أنجز ٣ مهام يوميًا لمدة أسبوع", category="إنجاز", duration_days=7, points_reward=60),
+    ]
+    for c in samples:
+        db.add(c)
+    await db.commit()
+    return {"message": f"Seeded {len(samples)} challenges"}
